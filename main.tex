@@ -6,41 +6,35 @@
 \include{title}
 \clearpage
 
-\section{Definisjoner}
-\begin{definition}{Sobolev-rom $\mathcal{H}_0^1(\Omega)$}{sob_space}
-	La $u:\overset{\subseteq \R^d}{\Omega} \to \R$ være en funksjon, med $u, \nabla u \in L^2(\Omega)$.
+\section{Poisson Equation}
+\subsection{Mesh}
+We define a grid $0 = x_0 < x_1 < \ldots < x_M = 1$ with $N$ elements $K_k = [x_i, x_{k+1}]$ for $k = 0, \ldots, N-1$.
+The mesh size is then defined as $h_k = x_{k+1} - x_k$.
+\subsection{Reference Element $\hat{K}$}
+We define the quadratic shape functions $\psi_i \in \mathbb{P}_2$ on the reference element $\hat{K} = [0, 1]$, with $\xi_\beta \in \{0, \frac{1}{2}, 1\}$ as the reference nodes.
+\begin{align*}
+    \psi_0(\xi) &= \frac{(1-\xi)(\xi-\frac{1}{2})}{(-\frac{1}{2})(-1)} = 2\xi^2 - 2\xi + \frac{1}{2}\\
+    \psi_1(\xi) &= \frac{(\xi)(\xi-1)}{(\frac{1}{2})(-\frac{1}{2})} = 4\xi(1-\xi)\\
+    \psi_2(\xi) &= \frac{(\xi)(\xi-\frac{1}{2})}{(1)(\frac{1}{2})} = 2\xi(\xi-\frac{1}{2})
+\end{align*}
 
-	\begin{equation}
-		\norm*{u}_{\mathcal{H}^1(\Omega)}^2 = \norm*{u}_{L^2(\Omega)}^2 + \norm*{\nabla u}_{L^2(\Omega)}^2
-		= \int_\Omega \abs{u}^2 \, dx + \int_\Omega \abs{\nabla u}^2 \, dx
-	\end{equation}
-	\begin{equation}
-		\mathcal{H}_0^1(\Omega) = \{u \in \mathcal{H}^1(\Omega) \mid u = 0 \text{ på } \partial \Omega\}
-	\end{equation}
+Now we define the mapping from the reference element to the physical element $\Phi_K: \hat{K} \to K$ as:
 
-	Med andre ord, en funksjon $u$ er i $\mathcal{H}^1_0(\Omega)$ hvis:
-	\begin{itemize}
-		\item $u$ og $\nabla u$ er kvadratisk integrerbare i $H^1(\Omega)$
-		      \begin{equation}
-			      \norm*{u}_{L^2(\Omega)}^2 = \int_\Omega \abs{u}^2 \, dx < \infty \quad \text{og} \quad \norm*{\nabla u}_{L^2(\Omega)}^2 = \int_\Omega \abs{\nabla u}^2 \, dx < \infty
-		      \end{equation}
-		\item $u$ er lik null på kanten $\partial \Omega$ av domenet $\Omega$
-		      \begin{equation}
-			      u(x) = 0 \quad \forall x \in \partial \Omega
-		      \end{equation}
-	\end{itemize}
-\end{definition}
 
-\begin{definition}{Lagrange Finite Element Space}{lagrange_space}
-	\begin{equation}
-		\mathcal{X}_h^k = \{v \in \mathcal{C}^0(\Omega) \mid v\big|_K \in \mathrm{P}_2 \text{ for alle } K \in \mathcal{T}_h\}
-	\end{equation}
-	\begin{itemize}
-		\item $u \in \mathcal{C}^0(\Omega)$ betyr at $u$ er kontinuerlig \(\mathcal{C}^0\) i domenet \(\Omega\).
-		\item $v\big|_K \in \mathrm{P}_2$ betyr at $v$ er et polynom av grad 2 i elementet \(K\).
-		\item \(\mathcal{T}_h\) er en partisjon av domenet \(\Omega\) i elementer \(K\).
-	\end{itemize}
-\end{definition}
+
+\subsection{Basis Functions}
+\begin{align*}
+    u(x) &= \sum_i u_i \phi_i(x) = \mathbf{u}^T \symbf{\phi}(x)\\
+    v(x) &= \sum_j v_j \phi_j(x) = \mathbf{v}^T \symbf{\phi}(x)\\
+\end{align*}
+Where $\phi_i(x)$ is the quadratic basis function defined as:
+\begin{align*}
+    \phi_i(x) &= \frac{(x-x_{i-1})(x-x_{i+1})}{(x_i-x_{i-1})(x_i-x_{i+1})}\\
+    \phi_{i-1}(x) &= \frac{(x-x_i)(x-x_{i+1})}{(x_{i-1}-x_i)(x_{i-1}-x_{i+1})}\\
+    \phi_{i+1}(x) &= \frac{(x-x_i)(x-x_{i-1})}{(x_{i+1}-x_i)(x_{i+1}-x_{i-1})}
+\end{align*}
+
+
 
 
 

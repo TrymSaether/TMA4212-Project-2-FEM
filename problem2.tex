@@ -1,0 +1,314 @@
+\section{Problem 2: Optimal Control Problem (Poisson Constraint)}
+
+\subsection{Problem Statement and Variational Formulation}
+In the second part, we tackle an\textbf{optimal control problem} where the state equation is the same Poisson equation as above.
+
+We have a \emph{state} \(y(x)\) (e.g. temperature in a rod) governed by \(-y'' = u\) on \((0,1)\) with \(y(0)=y(1)=0\).
+Here \(u(x)\) is the \emph{control} (a distributed heat source).
+We are given a desired state profile \(y_d(x)\) and a positive parameter \(\alpha\) that penalizes the cost of control.
+The goal is to find a control \(u\) that makes \(y\) as close as possible to \(y_d\) while keeping control effort moderate.
+This is formulated as the minimization problem:
+\[\min_{y,u} \; J(y,u) = \frac{1}{2}\int_0^1 (y(x) - y_d(x))^2\,dx + \frac{\alpha}{2}\int_0^1 u(x)^2\,dx,\]
+subject to the constraint \(-y''(x) = u(x)\), \(y(0)=y(1)=0\).
+
+The two terms in \(J\) represent: (1) the\textbf{tracking error} – a least-squares measure of how far \(y\) is from the desired state \(y_d\), and (2) the\textbf{control cost} – a Tikhonov regularization term penalizing large controls. The weight \(\alpha > 0\) governs the trade-off: a small \(\alpha\) means we prioritize matching \(y_d\) more (allowing stronger control), while a large \(\alpha\) makes control expensive, favoring a solution with smaller \(u\) even if \(y\) deviates from \(y_d\).
+
+This problem is a PDE-constrained optimization. In theory, one can derive the optimality conditions by introducing an adjoint variable. The continuous optimality system would consist of the state equation, an adjoint equation \(-\lambda'' = y - y_d\) with \(\lambda(0)=\lambda(1)=0\) for the adjoint (Lagrange multiplier enforcing the state equation), and the optimality condition \(\lambda + \alpha\,u = 0\) (which links the adjoint to the control). We will derive the\textbf{discrete} analog of this using the finite element approach.
+
+\subsection{Finite Element Discretization and Matrix Formulation}
+We will approximate the optimal control problem using the same finite element space \(V_h\) as before for both the state \(y_h\) and (for simplicity) the control \(u_h\). In practice, \(u\) only needs to lie in \(L^2(\Omega)\), but taking \(u_h \in V_h\) (which is \(H^1_0\)) is a common choice that simplifies implementation (the control will also automatically satisfy zero at boundaries, which is not actually required physically, but in our discrete setup it is fine). So we seek \(y_h, u_h \in V_h\) that minimize
+\[J_h(y_h, u_h) = \frac{1}{2}\|y_h - \bar{y}_d\|^2_{L^2} + \frac{\alpha}{2}\|u_h\|^2_{L^2},\]
+subject to the discrete \emph{weak} constraint:
+
+\[
+	a(y_h, v) = {\langle u_h, v \rangle}_{L^2}\quad \forall v \in V_h
+\]
+
+
+Here \(\bar{y}_d\) is the projection or interpolation of \(y_d\) onto \(X_h^2\) (to have a representation in the same discrete space).
+The notation
+\[
+	{\langle u_h, v \rangle}_{L^2} = \int_0^1 u_h(x)\,v(x)\,dx
+\]
+denotes the \(L^2\) inner product. The bilinear form \(a(\cdot,\cdot)\) is the same as before (stiffness inner product).
+Essentially, \(a(y_h,v) = F(v)\) is the weak form of \(-y''=u\). In matrix terms, \(a(y_h,v)=F(v)\) translates to \(K y = M u\), where \(K\) is the stiffness matrix and \(M\) is the mass matrix for the \(L^2\) inner product on \(V_h\).
+
+To set up the discrete optimization problem in algebraic form, let's denote:
+
+- \(N = M\) (number of elements), so the number of interior unknowns is \(n = 2N-1\). We will work with vectors \(y \in \mathbb{R}^n\) and \(u \in \mathbb{R}^n\) representing the coefficients of \(y_h\) and \(u_h\) in the basis \(\{\varphi_1,...,\varphi_{2N-1}\}\).
+- Let \(B\) be the \(n \times n\)\textbf{stiffness matrix} (from Problem 1, after applying BC), and \(M\) be the \(n \times n\)\textbf{mass matrix} with entries \(M_{ij} = \int_0^1 \varphi_j(x)\,\varphi_i(x)\,dx\). (Note: we reuse \(M\) for the mass matrix and also use it in formulas; context will clarify whether \(M\) is number of elements or mass matrix.)
+
+The constraint \(a(y_h,v) = \langle u_h,v\rangle\) for all \(v\in V_h\) translates to \(B y = F u\), where we expect \(F = M\) in this case (since if both \(u_h\) and \(v\) are in \(V_h\), \(\langle u_h, v\rangle\) corresponds to the mass matrix acting on the coefficient vector of \(u_h\)).
+In fact, because we chose \(u_h \in V_h\), \(\langle u_h, v\rangle = u^T M v\) for any coefficient vectors \(u,v \in \mathbb{R}^n\).
+Thus we can write the discrete optimization problem as:
+\[\min_{y \in \mathbb{R}^n,\;u \in \mathbb{R}^n} \; G(y,u) \quad \text{s.t.}\quad B\,y = M\,u,\]
+where
+\[G(y,u) = \frac{1}{2}(y - y_d)^T M (y - y_d) + \frac{\alpha}{2} u^T M u.\]
+Here \(y_d\) is now the interpolated desired state represented as a vector in \(\mathbb{R}^n\). We used \(M\) to properly account for the \(L^2\) norm (since the discrete \(L^2\) norm squared is \(y^T M y\)). The matrices \(B\) and \(F\) mentioned in the assignment correspond to \(B\) (stiffness) and \(F\) (which here is effectively the same as \(M\), the mass matrix, since we chose the same space for \(u\) and \(y\)).
+
+\paragraph{Summary of matrices}
+- \(B\) is \((2N-1)\times(2N-1)\) and is exactly the Poisson stiffness matrix assembled in Problem 1 (after applying zero Dirichlet BC).
+- \(M\) is the mass matrix of the same dimension. You can assemble \(M\) similarly to \(B\), but using \(\int_{K_k} \phi_{k,\alpha}\phi_{k,\beta} dx\) on each element. Using Simpson's rule, assembling \(M\) is straightforward: on each element, \(M^{(k)}_{\alpha\beta} \approx \frac{h_k}{6} [\delta_{\alpha\beta \text{ at endpoints}} + 4\cdot (\text{if both }\alpha,\beta=1) + ...]\).
+In fact, for quadratic elements, the consistent mass matrix (exact integrals) will have values: \(M_{ii} = \frac{h}{15}\) for endpoint nodes, \(M_{mm}=\frac{8h}{15}\) for midpoint node, and off-diagonals like \(M_{im} = \frac{h}{15}\cdot 2\), etc. However, one can simply integrate or use Simpson's rule to fill \(M\).
+- \(y_d\) vector: since \(y_d\) might not satisfy the boundary condition, typically we project it onto the FE space. The assignment defines \(\bar{y}_d\) as the interpolation of \(y_d\) onto \(X_h^2\). In practice, you can set \(y_d[i] = y_d(x_i)\) for each interior node \(x_i\) (and zero at boundary). This gives a nodal representation which is often sufficient. If \(y_d\) is not very smooth, this is an \(L^2\) projection by interpolation (not orthogonal projection, but okay for our use).
+
+\subsection{KKT Conditions and Optimality System}
+We now have a finite-dimensional constrained optimization: minimize \(G(y,u)\) subject to \(B y - M u = 0\). We solve this using the method of Lagrange multipliers.
+Introduce a Lagrange multiplier (adjoint) vector \(\lambda \in \mathbb{R}^n\) for the constraint. The Lagrangian function is
+\[\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T (B y - M u)\]
+
+To find the optimum, we set derivatives (gradients) w.rt \(y\), \(u\), and \(\lambda\) to zero.
+Computing these:
+- \(\nabla_y \mathcal{L} = 0\) gives
+\[\frac{\partial G}{\partial y} - B^T \lambda = 0.\]
+
+Now, \(\frac{\partial G}{\partial y} = M(y - y_d)\) because \(G = \frac{1}{2}(y-y_d)^T M (y-y_d)\) (a quadratic form), so its gradient is \(M(y - y_d)\). Also \(B\) is symmetric (\(B^T = B\)). Thus:
+\[M (y - y_d) - B\,\lambda = 0. \qquad (1)\]
+This is the\textbf{discrete adjoint equation}: \(B\,\lambda = M (y - y_d)\). It resembles a Poisson solve for \(\lambda\): in continuous terms this corresponds to \(- \lambda'' = y - y_d\) with homogeneous BC.
+
+- \(\nabla_u \mathcal{L} = 0\) gives
+\[\frac{\partial G}{\partial u} + (-M^T \lambda) = 0.\]
+Here \(\frac{\partial G}{\partial u} = \alpha M u\) (since second term of \(G\) is \(\frac{\alpha}{2} u^T M u\)), and \(-M^T \lambda = -M \lambda\) (again \(M\) is symmetric). So:
+\[\alpha M u - M \lambda = 0, \quad \text{or} \quad \alpha M u = M \lambda. \qquad (2)\]
+If \(M\) is invertible on this subspace (it is positive definite on \(V_h\)), we can simplify (2) by premultiplying by \(M^{-1}\):
+\[\alpha u = \lambda,\]
+or equivalently \[\lambda = \alpha u.\]
+This is the\textbf{optimality condition} linking control and adjoint: the discrete analog of \(\lambda + \alpha u = 0\) (note the sign – here we got \(\alpha u = \lambda\), which implies \(\lambda = \alpha u\); if we had set the Lagrangian with a \(-\lambda^T(By - Mu)\), we might get \(\lambda = -\alpha u\); it's a matter of sign convention for \(\lambda\); we'll proceed with \(\lambda = \alpha u\) for consistency with our equations).
+
+- \(\nabla_{\lambda} \mathcal{L} = 0\) imposes the\textbf{constraint}:
+\[B y - M u = 0. \qquad (3)\]
+This just reproduces the state equation in matrix form, as expected.
+
+Now we have the system of equations (1), (2), (3) to solve for unknowns \(y, u, \lambda\) (each of length \(n\)). Using \(\lambda = \alpha u\) from (2), we can eliminate \(\lambda\) and reduce the system. Substitute \(\lambda = \alpha u\) into (1) and (3):
+
+- From (1): \(M(y - y_d) - B(\alpha u) = 0 \implies M(y - y_d) = \alpha B\,u\).
+- From (3): \(B y = M u\).
+
+These two equations in \(y\) and \(u\) can be solved simultaneously. One approach is to eliminate \(y\): from \(B y = M u\), we get \(y = B^{-1} M u\) (assuming \(B\) is invertible, which it is SPD). Substitute this into the first:
+\[M(B^{-1} M u - y_d) = \alpha B\, u.\]
+This is an equation solely in \(u\). Rearranged:
+\[M B^{-1} M\, u + (-\alpha B)\, u = M y_d.\]
+Or
+\[(M B^{-1} M + \alpha B)\, u = M y_d.\]
+This is the \emph{Schur-complement} equation for \(u\). In practice, one could solve this by iterative methods, but a clearer path is to instead solve the full KKT system by forming it or by a two-step procedure:
+
+\textbf{Two-step solution (Optimality System):}Another way to solve (1)-(3) is:
+1. Solve the\textbf{state equation} \(B y = M u\) for \(y\) in terms of a given \(u\).
+2. Solve the\textbf{adjoint equation} \(B \lambda = M(y - y_d)\) for \(\lambda\) (given \(y\)).
+3. Use the optimality condition \(\alpha u = \lambda\) to update \(u\).
+
+However, since (1)-(3) are linear equations in the unknowns, we can actually solve them all together as a linear system. By substituting \(\lambda=\alpha u\) in the constraint, we also get \(\lambda = \alpha u\) in the adjoint eq: \(B(\alpha u) = M(y - y_d)\) or \(B u = \frac{1}{\alpha}M(y - y_d)\). This is essentially the same as above.
+
+\textbf{Direct linear system formulation:}We can set up the\textbf{KKT system} in block-matrix form. Combining (1),(2),(3) with \(\lambda\) included, we have:
+
+\[
+	\begin{pmatrix}
+		M  & 0        & -B \\
+		0  & \alpha M & M  \\
+		-B & -M       & 0
+	\end{pmatrix}
+	\begin{pmatrix} y \\ u \\ \lambda \end{pmatrix}
+	=
+	\begin{pmatrix} M y_d \\ 0 \\ 0 \end{pmatrix}.
+\]
+
+This \(3n \times 3n\) linear system corresponds to equations:
+(1) \(M(y - y_d) - B\lambda = 0\),
+(2) \(\alpha M u + M \lambda = 0\),
+(3) \(-B y - M u = 0\) (note the signs; one can also write (3) as \(B y - M u = 0\) depending on how we set it up). Solving this system will yield \(y, u, \lambda\) simultaneously.
+In practice, it's more efficient to reduce the system size by using \(\lambda = \alpha u\) as we did, which gives a \(2n \times 2n\) symmetric system in \((y,\lambda)\) or \((y,u)\). For example, substituting \(\lambda=\alpha u\) into (1) and (3) gives a \(2n\times 2n\) system in \(y\) and \(u\):
+
+\[
+	\begin{pmatrix}
+		M  & -\alpha B \\
+		-B & M
+	\end{pmatrix}
+	\begin{pmatrix} y - y_d \\ u \end{pmatrix}
+	= \begin{pmatrix} 0 \\ 0 \end{pmatrix},
+\]
+
+which can be manipulated to the Schur complement form above. But it may be simplest to just assemble the full KKT matrix or use a solver that allows saddle-point systems.
+
+\textbf{Interpreting the solution:}From the optimality conditions we can already see:
+- \(\lambda = \alpha u\) means the adjoint \(\lambda\) is proportional to (and has the opposite sign of) the control for \(\alpha>0\). In fact, in continuous terms we expected \(\lambda = -\alpha u\); the sign discrepancy is due to how we set up \(\mathcal{L}\), but you can think of \(\lambda = \alpha u\) here with \(\lambda\) playing the role of \(-p\) if \(p\) was the adjoint variable in the continuous setting. Essentially, \(u = \frac{1}{\alpha}\lambda\) which is the discrete form of \(u = -\frac{1}{\alpha}p\).
+- \(B y = M u\) is just the state equation \(-y'' = u\) in weak form, so \(y\) is the result of applying the inverse of \(B\) (the Green's function, essentially) to the control.
+- \(B \lambda = M(y - y_d)\) is the adjoint equation: it shows \(\lambda\) acts like the “error” \(y-y_d\) fed through the same Poisson operator.
+
+These equations mirror the continuous optimality system:
+\[ -y'' = u, \qquad -\lambda'' = (y - y_d), \qquad \lambda + \alpha u = 0, \]
+with \(y(0)=y(1)=\lambda(0)=\lambda(1)=0\).
+
+\subsection{Implementation for the Optimal Control Problem}
+We will reuse the FEM assembly from Problem 1. The stiffness matrix \(B\) and load handling is already implemented. We need two new ingredients: assembling the\textbf{mass matrix} \(M\) for the inner products, and solving the coupled system.
+
+-\textbf{Mass matrix assembly:} This is similar to assembling the stiffness matrix, but using \(\int \varphi_j \varphi_i\) instead of \(\int \varphi'_j \varphi'_i\). You can modify your assembly routine: instead of using shape function derivatives, use the shape functions themselves. On each element, using the same quadratic basis, the local mass matrix entries are \(M^{(k)}_{\alpha\beta} = \int_{K_k} \phi_{k,\alpha}(x)\,\phi_{k,\beta}(x)\,dx\). Using reference mapping: \(M^{(k)}_{\alpha\beta} = h_k \int_0^1 \Psi_\alpha(\xi)\Psi_\beta(\xi)\,d\xi\). Apply Simpson's rule on \([0,1]\):
+\[\int_0^1 \Psi_\alpha \Psi_\beta d\xi \approx \frac{1}{6}[\Psi_\alpha(0)\Psi_\beta(0) + 4\Psi_\alpha(0.5)\Psi_\beta(0.5) + \Psi_\alpha(1)\Psi_\beta(1)].\]
+Given the Lagrange property, this is easy: if \(\alpha=\beta\) (diagonal entries), the product at the node points will pick up a 1 at that node. If \(\alpha \neq \beta\), at the midpoint \(\Psi_\alpha(0.5)\Psi_\beta(0.5)\) might be nonzero (indeed, \(\Psi_1(0.5)=1\) but \(\Psi_0(0.5)=\Psi_2(0.5)=0\), etc.). You can also integrate exactly: for quadratic Lagrange on one element, the consistent mass matrix (exact) has values (for one element of length \(h\)):
+$$M^{(k)} = \frac{h_k}{30}
+	\begin{pmatrix}
+		4  & 2  & -1 \\
+		2  & 16 & 2  \\
+		-1 & 2  & 4
+	\end{pmatrix}$$
+(if using nodes [0,0.5,1] reference, this should be the result in physical coords with factor \(h/6\) earlier might differ by a constant; one should verify, but using Simpson's will yield a close approximation to these values). In any case, assembling \(M\) is straightforward by copying the structure of stiffness assembly but with different local element contributions.
+
+\subsection{Setting up the KKT system:} Once we have \(B\) (size \(n\times n\)), \(M\) (size \(n\times n\)), and the vector \(y_d\) (length \(n\)), we can form the matrices for the optimality equations. There are two main approaches:
+
+\subsection{(a) Elimination approach}
+Use the formula \(\lambda = \alpha u\) to reduce unknowns. Then solve \(B y = M u\) and \(B (\alpha u) = M(y - y_d)\). This can be done iteratively:
+\begin{enumerate}
+	\item Start with an initial guess for \(u\) (maybe zero).
+	\item Solve \(B y = M u\) for \(y\) (this is a Poisson solve, can use your sparse solver).
+	\item Solve \(B \lambda = M(y - y_d)\) for \(\lambda\) (another Poisson solve).
+	\item Update \(u = \frac{1}{\alpha}\lambda\) (from optimality condition).
+\end{enumerate}
+In fact, because the system is linear, this process will converge in one iteration (if done exactly) – essentially you are solving the linear equations by direct substitution. So doing steps 2–4 once yields the solution. To be safe, you could iterate a couple of times to ensure consistency. But a single iteration is enough: after step 4, you have a \(u\) that should satisfy all conditions. You could then recompute \(y\) and \(\lambda\) one more time for consistency. This approach leverages the fact that each sub-step is solving a symmetric positive definite system (\(B\)) which we know how to do. This can be efficient because solving two \(n\times n\) SPD systems might be easier than solving one big \(2n \times 2n\) or \(3n \times 3n\) system.
+
+\textbf{(b) Direct solve of KKT matrix:} Form the block matrix as given above for \((y,\lambda)\) or \((y,u)\). For example, using \((y,\lambda)\) elimination form:
+\[
+	\begin{pmatrix}
+		B & -\frac{1}{\alpha} M \\
+		B & M 0
+	\end{pmatrix}
+\]
+Actually, it's easier to stick with \((y,u,\lambda)\) full system or \((y,u)\) reduced. As derived, a symmetric reduced system in \((y,\lambda)\) is:
+\[
+	\begin{pmatrix}
+		M  & -B                 \\
+		-B & \frac{1}{\alpha} M
+	\end{pmatrix}
+	\begin{pmatrix} y - y_d \\ \lambda \end{pmatrix}
+	= 0.
+\]
+But this particular form has a right-hand side involving \(y_d\). Alternatively, the \((y,u,\lambda)\) system with RHS \((M y_d, 0, 0)\) may be easier to assemble and solve using a sparse solver for saddle-point problems (e.g. use \mintinline{python}{spsolve} on the full matrix, which is \(3n \times 3n\)). If using direct solvers, ensure to use a sparse matrix type and possibly an appropriate solver that can handle the indefinite matrix (the KKT matrix is symmetric but not positive definite, it's saddle-point indefinite). SciPy's direct solver (superLU) can handle it in principle, or one can implement the elimination manually as above.
+
+Given simplicity and reuse, approach (a) is quite appealing: it reuses the Poisson solver for \(B\). In code, it would look like:
+
+\begin{minted}{python}
+# Assemble B (stiffness) and M (mass) using previous functions
+B, _ = assemble_poisson(..., f=0)  # (or assemble directly without f, just matrix)
+M = assemble_mass(...)
+
+# Make sure to enforce Dirichlet BC on matrices: B and M are already interior-only of size n x n.
+# Form y_d vector of length n:
+y_d_vec = np.array([y_d(x_i) for i in interior_nodes])
+
+# Solve state equation for a given u (initially u=0):
+u = np.zeros(n)
+for iteration in range(2):   # one or two iterations should suffice
+# 1. given u, solve B y = M u
+rhs_y = M.dot(u)
+y = spsolve(B, rhs_y)
+# 2. solve B lambda = M (y - y_d)
+rhs_lambda = M.dot(y - y_d_vec)
+lam = spsolve(B, rhs_lambda)
+# 3. update u = (1/alpha) * lambda
+u = (1/alpha) * lam
+
+# Now y, u, lam are the optimal state, control, and adjoint.
+\end{minted}
+
+This yields \(u_h\) and \(y_h\). (We could verify convergence by checking if \(u\) changes between iterations, but since the linear system is solved exactly, it won't change after the first iteration.)
+
+\textbf{Reusing code:} Notice we used \mintinline{python}{assemble_poisson} to get \(B\), which we already had from problem 1. We had to implement \mintinline{python}{assemble_mass} similarly. Solving \(B y = something\) we can reuse our solver or use SciPy's \mintinline{python}{spsolve} as above.
+This demonstrates the benefit of writing modular code -- most of the heavy lifting (assembly, solving SPD systems) was already done.
+
+\subsection{Results: Analyzing the Optimal Control Solution}
+After solving, we will have:
+- The coefficient vector \(y\) describing the\textbf{optimal state} \(y_h(x)\),
+- The coefficient vector \(u\) for the\textbf{optimal control} \(u_h(x)\),
+- (Optionally, \(\lambda\) for the\textbf{adjoint state}, though \(\lambda\) is just \(\alpha u\) so it adds no new information beyond scaling).
+
+We can now examine how the solution behaves for different scenarios. The assignment specifies three test cases for \(y_d(x)\):
+\begin{enumerate}
+	\item \(y_d(x) = \frac{1}{2}x(1-x)\). (This is a smooth, concave parabola that also satisfies \(y_d(0)=y_d(1)=0\), so \(y_d \in H^1_0(\Omega)\).)
+	\item \(y_d(x) = 1\) (a constant function). (This does\textbf{not} satisfy the boundary condition; \(y_d \notin H^1_0\) because it's discontinuous at the boundaries in the sense of the \(H^1\) space. Essentially, desired value is 1 inside but boundary is 0 in state.)
+	\item \(y_d(x) = \begin{cases}1 & x\in[0.25,0.75], \\ 0 & \text{otherwise},\end{cases}\) a piecewise constant “hat” function (0 on \([0,0.25)\), 1 on \([0.25,0.75]\), 0 on \((0.75,1]\)). (This is discontinuous at \(x=0.25\) and \(x=0.75\), and also \(y_d(0)=y_d(1)=0\) but it has jumps in the interior, so \(y_d \notin H^1_0\) due to the interior discontinuities.)
+\end{enumerate}
+We also consider different values of the cost parameter \(\alpha\). Typical values for \(\alpha\) mentioned are \(10^{-3}\) to \(10^{-4}\). We are also asked to consider\textbf{large costs} \(\alpha \in (10^{-2}, 1)\) and\textbf{very small costs} \(\alpha \in (10^{-6}, 10^{-8})\).
+Let's discuss what we expect in each regime and for each \(y_d\):
+
+\paragraph{Case 1}
+\(y_d(x)=\frac{1}{2}x(1-x)\).
+This desired state is actually the exact solution of the state equation for a uniform unit control (\(u=1\)) since \(-d^2/dx^2(\frac{1}{2}x(1-x)) = 1\). So \(y_d\) is physically achievable by applying a constant control \(u(x)=1\). If \(\alpha\) is extremely small (control is cheap), the optimizer will choose \(u \approx 1\) to exactly reach \(y_d\). For \(\alpha \to 0\), we expect \(y_h(x) \to y_d(x)\) and \(u_h(x) \to 1\). If \(\alpha\) is moderate, there will be a slight compromise: the control might be a bit less than 1 to save cost, resulting in \(y_h\) slightly under-shooting \(y_d\). If \(\alpha\) is large, using \(u=1\) is too costly, so the optimizer will sacrifice fit: for very large \(\alpha\), the optimal \(u\) will be close to 0, and thus \(y_h\) will be close to 0 (the trivial state). Generally, as \(\alpha\) increases, \(u_h\) will decrease from 1 towards 0, and \(y_h\) will correspondingly move from \(y_d\) toward the zero solution. This makes sense: \(\alpha\) measures how averse we are to using control. For \(\alpha\) in \((0.01,1)\) (large-ish costs), we expect \(u_h\) to be significantly smaller than the \(u\) needed to match \(y_d\), so \(y_h\) will be noticeably lower than \(y_d\) (a under-heated rod). This is consistent with the optimization: if control is expensive, it's optimal to “give up” on achieving \(y_d\) and accept a large tracking error, because reducing that error would cost even more in control effort.
+
+\paragraph{Case 2}
+\(y_d(x)=1\) (constant).
+The desired state here conflicts with the boundary conditions (we can't ever have \(y(0)=1\) because \(y(0)\) must be 0). The best we can do is make \(y\) as close to 1 as possible in the interior. Intuitively, the optimal state will form a shape that rises from 0 at \(x=0\) to near 1 in the interior, then goes back to 0 at \(x=1\). The control will concentrate near the boundaries to try to create steep gradients that push \(y\) up near the boundaries. For moderate \(\alpha\), \(y_h(x)\) might take a shape like a concave function that peaks below 1 (since reaching 1 exactly everywhere is impossible). For very small \(\alpha\) (control is cheap), the optimizer will try to force \(y\) to 1 as much as possible. The limiting scenario as \(\alpha \to 0\) would be \(y(x)\) approaching some function that is 1 on \((0,1)\) except infinitesimally thin boundary layers dropping to 0 at the ends. The control \(u\) in that limit would become very large (possibly tending to a Dirac delta at the boundaries) -- in discrete terms, expect \(u_h\) to spike near \(x=0,1\) for very small \(\alpha\). Of course, in finite resolution, we'll just see very large control values on the first and last few interior nodes to try to counteract the fixed boundary condition. For \emph{large \(\alpha\)}, the opposite happens: control is expensive, so the optimum might be to do almost nothing (\(u_h \approx 0\)), resulting in \(y_h \approx 0\) (because without control the state stays 0). Indeed, if \(\alpha\) is huge (say \(\alpha=1\) or bigger), minimizing the cost term dominates, so the optimal \(u\) might be practically 0, making the state nearly 0 and incurring a large tracking error – but that's cheaper than using strong control. So for \(\alpha\) large, we get \(y_h\) far from \(y_d\) (nearly zero) and \(u_h \approx 0\).
+
+\paragraph{Case 3}
+\(y_d(x)\) is piecewise constant (0 outside [0.25,0.75] and 1 in the middle).
+This desired profile is even more challenging, because it has discontinuities at \(x=0.25\) and \(x=0.75\). The state \(y\) must remain continuous and satisfy \(y(0)=y(1)=0\). For small \(\alpha\), the controller will try to approximate this step as closely as possible. We expect the optimal \(y_h\) to be\textbf{smooth but sigmoidal}: it will rise from 0 at \(x=0.25\) to near 1, then stay high, then drop to 0 at \(x=0.75\). It cannot have an actual jump, but with cheap control it can create a very steep transition by concentrating control near those points. The optimal control \(u_h(x)\) for very small \(\alpha\) will likely be large in magnitude near \(x=0.25\) and \(x=0.75\), perhaps creating sharp “peaks” of heat to force \(y\) up or down quickly. In the continuous limit, one might imagine \(u\) approaching a combination of Dirac delta functions to enforce the jump – in discrete form, we'll just see large values at a few mesh points around 0.25 and 0.75.\textbf{Note:} \(y_d\) here is not in \(H^1_0\), so an interesting observation (asked in (c2)) is how the optimal solution differs when the desired state lacks the smoothness or boundary compatibility. We will likely observe that for \(y_d\) not in \(H^1_0\), as \(\alpha \to 0\) the\textbf{tracking error cannot go to zero} everywhere. Even with extremely strong control, the best \(y\) can do is approach the \(H^1_0\) projection of \(y_d\). For example, for the step \(y_d\), the best \(y\) can do (with infinite control) is take a shape that is 0 at boundaries and approximates the step – essentially the \emph{harmonic extension} of that step (which will smear out the jump a bit because \(y\) must solve \(-y'' = \) “something like a Dirac” to attempt a jump). The result is that \(y_h\) will have overshoot/undershoot near the jump or at least a slope. If \(\alpha\) is extremely small but nonzero, \(u_h\) will be very large but finite, and \(y_h\) will be very close to the piecewise constant profile except in a small region around 0.25 and 0.75 where it transitions. If \(\alpha\) is larger, again less control is used, so \(y_h\) will not reach 1 in the middle fully.
+
+
+In summary for \textbf{(c1)}: for large \(\alpha\) (expensive control), the optimal control \(u_h\) tends to be small (close to zero), and as a result the optimal state \(y_h\) stays close to the zero solution (or more generally, tends towards the solution of \(-y''=0\) with given BC, which is just \(y=0\) here). This matches expectations: if using control costs a lot, the optimizer is better off not using it, accepting that \(y \neq y_d\). So yes, it makes sense that as \(\alpha\) increases, \(u_h \to 0\) and \(y_h\) deviates strongly from \(y_d\).
+
+For \textbf{(c2)}: for very small \(\alpha\) (cheap control), the optimal solution tries to match \(y_d\) as closely as possible. If \(y_d \in H^1_0(\Omega)\) (like case 1, the parabola), then in the limit \(\alpha \to 0\) we can essentially achieve \(y_h = y_d\) by choosing \(u_h = -y_d''\) (the exact control needed to produce \(y_d\)). There is no fundamental obstacle to matching \(y_d\) exactly (aside from maybe if it requires unbounded \(u\), but here \(y_d\) was exactly reachable with a bounded \(u\)). If \(y_d \notin H^1_0\) (cases 2 and 3), then even as \(\alpha \to 0\), \(y_h\) cannot equal \(y_d\) exactly because \(y_h\) must lie in \(H^1_0\). Instead, \(y_h\) will approach the \emph{closest} function to \(y_d\) in \(H^1_0\) that can be achieved with increasingly large \(u\). For case 2, as mentioned, \(y_h\) will approach a function that is 1 in the interior and drops near the boundaries (the best it can do to approximate the constant 1 while still being 0 at the ends). For case 3, \(y_h\) will approach a continuous version of the step (likely a very steep S-shape at the jump locations). In these cases, \(u_h\) will grow without bound (as mesh refines, control might need to blow up to approximate a discontinuity) – the discrete optimal \(u_h\) for tiny \(\alpha\) will be extremely large near the discontinuities. So the difference is:
+- If \(y_d \in H^1_0\), the optimal state can converge to \(y_d\) (achieving nearly zero tracking error) as \(\alpha \to 0\) with a well-behaved control (bounded or moderately growing).
+- If \(y_d \notin H^1_0\), the optimal state \(y_h\) will\textbf{not} converge to \(y_d\) pointwise; it will converge to a smoother function (the projection of \(y_d\) into the reachable space). The tracking error will decrease but not vanish at the points of discontinuity or boundary. The control in these areas will become very large, indicating the problem tries to “force” the state to match the unreachable target features (like jumps or nonzero boundary) by using extreme controls. This highlights that a discontinuous or non-\(H^1\) target leads to an\textbf{ill-posed limit} as \(\alpha \to 0\): the required control blows up.
+
+In practical terms, for our discrete experiments, we should observe that for case 2 and 3 with extremely small \(\alpha\), the computed \(u_h\) gets very large at the locations where \(y_d\) has incompatible features, and \(y_h\) will show boundary layers or smoothed transitions. For case 1, \(y_h\) will basically equal \(y_d\) and \(u_h\) will be mild (around 1 everywhere) for small \(\alpha\). These observations should be clearly commented on in the report.
+
+
+
+\section{Writing the Report}
+
+Finally, let's outline how to write the project report in a clear, scientific style. The report should be structured with a logical flow, including an introduction, methodology, results, and conclusions. Here are some recommendations:
+
+\textbf{1. Introduction:}Start by describing the problems being solved and their context. For example, explain that you are solving a Poisson equation using FEM and an optimal control problem constrained by that equation. State the goals: to implement a finite element solver and to investigate the behavior and accuracy for both the direct PDE and the optimal control. Mention the use of quadratic elements and highlight what the reader will learn (e.g., convergence rates, influence of the parameter \(\alpha\) in control). Keep the introduction concise but motivating.
+
+\textbf{2. Mathematical Formulation:}
+In a section (or sections) for theory, present the variational formulation of each problem. For the Poisson problem, write down the weak form and define the finite element space \(V_h\).
+Explain the Galerkin method (you can essentially summarize what we did: \(a(u_h,v)=F(v)\) for all \(v\in V_h\)) and how this leads to a linear system. Introduce the quadratic Lagrange basis concept and maybe include the shape function definitions or a figure (like the one we prepared) to illustrate the basis functions on an element. Keep the tone explanatory, as if teaching a fellow student. For the optimal control problem, present the cost functional and constraint.
+Then derive the discrete formulation: show how you set up the minimization over \(V_h\).
+Derive the optimality conditions or at least present the final linear system that needs to be solved (perhaps show the equations (1), (2), (3) or the block matrix form). You might not need to include the full \(3n \times 3n\) matrix in the report due to space, but clearly state the system of equations (e.g., “The optimality conditions are: \(B y = M u\), \(B \lambda = M(y - y_d)\), and \(\alpha M u = M \lambda\), which we solve for \(y_h, u_h\).”).
+
+When writing math, use proper notation and typesetting (LaTeX equations if using a PDF/latex report or Markdown formula syntax in a notebook). Number important equations for reference (e.g., refer to “(1)” as needed).
+
+\textbf{3. Implementation Method:}
+Describe how you approached the implementation. This is where you detail the steps taken to solve the problems numerically. For the Poisson solver, explain the mesh generation (mention you allow variable element sizes) and the assembly process for the matrices. You might include a small pseudo-code or snippet in the report to illustrate the assembly loop (as we did in the guidance). Make sure to discuss how you handled the boundary conditions (e.g., “We enforce \(u(0)=u(1)=0\) by assembling the system including those nodes and then removing the first and last equations, as this is equivalent to fixing those values at zero.
+Indicate that you used a sparse linear solver (e.g., mention using SciPy's sparse solver or similar).
+
+For the optimal control implementation, explain how you reused the Poisson assembly. Describe assembling the mass matrix and forming or solving the optimality system. It's good to explain whether you solved the big KKT system directly or used the elimination approach – either is fine, but be clear. If you did elimination (as we recommended), say something like: “To solve the optimal control problem, we note that the optimality conditions can be split into state and adjoint equations. We implemented an algorithm that solves \(B y = M u\) and \(B \lambda = M(y - y_d)\), then uses \(\lambda = \alpha u\) to update the control. This yields the optimal \(u\) and \(y\) efficiently without assembling a large indefinite system.” If you assembled the full system, you could mention solving a saddle-point system and perhaps note the solver used.
+
+When describing the code, you don't need to list the entire code, just explain the approach. You can include short code snippets if using a notebook (for instance, showing how you applied Simpson's rule or how you set up the linear system call). Use these snippets only to illustrate key steps or any tricky part – avoid dumping large blocks of code in the report.
+
+\textbf{4. Results and Discussion:}This section should present the outcomes of your experiments. Structure it in two parts: one for the Poisson problem results (convergence analysis) and one for the optimal control results.
+
+- \emph{Poisson results:} Report on at least one non-trivial test case. For example, you can say: “We tested the FEM solver on the problem \(-u''=f\) with \(f(x)=1\) and exact solution \(u(x)=\frac{x(1-x)}{2}\). The \(L^2\) error and \(H^1\) error were computed for a sequence of mesh refinements.” Then present a\textbf{table or plot} of the error vs. number of elements or \(h\). For instance, a table with columns: \(M\) (elements), \(\|u-u_h\|_{L^2}\), rate, \(\|u-u_h\|_{H^1}\), rate. The “rate” can be approximated by ratio of errors or finite difference of log error (this shows order). You should observe roughly 3rd order in \(L^2\) and 2nd order in \(H^1\), which you can state: “The numerical errors decrease with mesh refinement. The computed convergence rates (see Table 1) are consistent with the theoretical order of \(p+1=3\) for the \(L^2\) norm and \(p=2\) for the \(H^1\) norm for quadratic elements.” This confirms the implementation's correctness. You could include a plot of the solution \(u_h(x)\) vs the exact \(u(x)\) for a representative mesh to show they match closely. A simple line plot of \(u_h\) and \(u\) on [0,1] would suffice. If you tested a more complex \(f\) (like something that doesn't have a polynomial solution), you can still show the \(u_h\) graph and maybe the error distribution. The key is to demonstrate that the solver works and converges. This addresses learning objective of confirming theoretical results numerically.
+
+- \emph{Optimal control results:} Present the outcomes for the three \(y_d\) cases and varying \(\alpha\). It might be good to break this into sub-subsections or at least separate paragraphs: one paragraph for each \(y_d\) case, discussing the effect of \(\alpha\). Use plots to visualize\textbf{both the optimal state and control}. For each case, you can create a plot that includes: the desired profile \(y_d(x)\) (as a reference), the optimal state \(y_h(x)\) for a certain \(\alpha\), and perhaps the optimal state for another \(\alpha\) for comparison. In a separate plot, show the corresponding optimal control \(u_h(x)\). For example, you might have Fig. 1a: \(y_d\) and \(y_h\) for \(\alpha=10^{-3}\) (and maybe \(\alpha=10^{-1}\) as well, to illustrate difference) in case 2; Fig. 1b: the \(u_h(x)\) for those \(\alpha\) values. Or you could make a single figure with multiple subplots or multiple curves annotated. Ensure the plots have clear legends and axes labels (e.g., “x” on horizontal, and “Temperature” or “State \(y\)” on vertical for the state plot, “Control \(u\)” for the control plot).
+
+When discussing the plots, refer to the features we predicted:
+- For case 1 (parabolic \(y_d\)): you could say “For a small \(\alpha=10^{-4}\), the optimal state \(y_h\) coincides almost exactly with \(y_d\), and the control \(u_h\) is nearly the constant 1 (Fig. X). For a larger \(\alpha=0.1\), the control is weaker (about 0.5 on average), resulting in the state \(y_h\) being lower than \(y_d\) (the rod is under-heated). This demonstrates how a higher control cost forces the system to compromise on achieving the desired temperature.”
+- For case 2 (constant \(y_d\)): “The desired state is 1, which the system tries to achieve in the interior. For small \(\alpha\), the interior of \(y_h\) approaches 1, but near \(x=0,1\) it must drop to 0. We observe a boundary layer where \(y_h\) rapidly decreases (Fig. Y). The control \(u_h\) for \(\alpha=10^{-6}\) becomes very large near the boundaries (spikes at the first and last interior node) – essentially the heater has to blast the ends to try to maintain the temperature. For \(\alpha=0.01\), the control is more moderate and \(y_h\) peaks at a value less than 1 (around 0.6 perhaps), showing the trade-off.”
+- For case 3 (piecewise constant \(y_d\)): “The optimal state for small \(\alpha\) closely follows the desired profile: it stays near 0 until \(x\approx0.25\), then rises sharply to ~1, stays high, and drops sharply near \(x=0.75\) (Fig. Z). It cannot have a jump, so it overshoots slightly (we see a slight oscillation or smoothing around the jump point, which could be due to the finite mesh resolution and the solver trying to fit a discontinuity). The control needed for \(\alpha=10^{-6}\) shows two sharp peaks around \(0.25\) and \(0.75\), corresponding to the locations of rapid change in \(y\). This is consistent with the expectation that in the limit \(\alpha \to 0\), the control would approach a distribution (like a Dirac delta) at those points. For a larger \(\alpha\), these peaks are lower, and the state \(y_h\) no longer reaches 1 in the middle – it might only reach, say, 0.5 – because high control at the jumps is too expensive.” Make sure to note the difference between when \(y_d \in H^1_0\) (case 1) and not (cases 2,3): in the latter, even with \(\alpha\) extremely small, \(y_h\) cannot exactly equal \(y_d\). You can explicitly say: “In case 2 and 3, \(y_d\) is not in the admissible space of the state, and thus \(y_h\) can only approximate it. Even as \(\alpha\) becomes very small, \(y_h\) remains a smooth function (it can't have the discontinuities that \(y_d\) has), and the control \(u_h\) grows very large in attempting to minimize the \(L^2\) error. This contrasts with case 1, where \(y_d\) was attainable and indeed \(y_h = y_d\) for small \(\alpha\) with a bounded control.” These observations address the questions posed in (c1) and (c2) of the assignment.
+
+Throughout the results, relate what you observe back to theory: does it make sense physically and mathematically? The above points do that. Also, mention any numerical issues encountered: for example, if \(\alpha\) is extremely small, the linear system might be ill-conditioned due to the huge control values – but presumably for the values given it's fine. If you refined the mesh for case 3, you might mention needing a fine mesh to capture the steep gradients.
+
+\textbf{5. Conclusion:}End the report with a short conclusion (could be a paragraph) summarizing what was accomplished and learned. For example: “We developed a FEM solver using quadratic elements for a 1D Poisson equation and demonstrated its \(O(h^3)\) \(L^2\)-convergence. This solver was extended to tackle an optimal control problem. We formulated the optimality system and solved it efficiently by leveraging the FEM matrices. Numerical experiments for various desired states showed that the optimal state and control behave as expected: for low control cost \(\alpha\), the state closely tracks the target (even to the extent allowed by the PDE constraints), while for high \(\alpha\) the control is suppressed and the state deviates significantly from the target. These results illustrate the interplay between the PDE constraint and the optimization functional, and the importance of the target function's regularity in achievable performance.”
+
+\textbf{Style tips:}Write in a clear, formal tone. Use the third person or passive voice for a formal style (e.g., “The code was implemented in Python and the experiments were carried out...”), or first person plural is also acceptable in scientific writing (“We implemented the solver...”). Be consistent. Include references if you consulted any (for instance, if you used the Curry notes or textbook, cite them appropriately in a bibliography). Make sure all figures and tables have numbers/captions and are referenced in the text (e.g., “see Fig. 2”). Plots should have legible labels (font not too small, distinguishable line styles or markers).
+
+Keep paragraphs relatively short and focused. Use bullet points or numbered lists if enumerating specific steps (for instance, listing the steps of assembly or the steps of the algorithm as we did in guidance). This improves readability.
+
+Before finalizing, reread the report to ensure the logic flows and that someone who hasn't followed our entire conversation could understand each part. The report should tell a story: from problem definition to method to verification to findings. By following these guidelines, you will produce a well-structured and informative report that fulfills the project requirements and showcases your understanding.
+
+\subsection{Numerical Experiment Suggestions and Visualization}
+
+To recap and ensure you have a solid plan for the experiments:
+
+-\textbf{Poisson problem tests:} Use at least one test where the exact solution is known. We chose \(f=1\) leading to \(u(x)=x(1-x)/2\). You could also test a sinusoidal \(f\) (say \(f(x)=\pi^2 \sin(\pi x)\), then \(u(x)=\sin(\pi x)\) is the exact solution) for variety. Verify convergence rates with, say, \(M=4,8,16,32,64\). Plot error vs \(h\). Also plot the approximate solution vs exact for one case to show they overlap. This addresses verification.
+
+-\textbf{Optimal control tests:} The assignment explicitly gives the three \(y_d\) functions, so use those. For each \(y_d\), pick a moderate mesh resolution (maybe \(M=64\) or 100 elements, so \(n\approx127\) or 199, which is fine for computation). Then do a few runs with different \(\alpha\) values. A good strategy is: for each case, run with \(\alpha\) = some “large” value (like 0.1 or 1), a “typical” value (1e-3 or 1e-4), and a “small” value (1e-6 or 1e-7). This will show the trends. You can tabulate some metrics if needed: e.g., \(\|y_h - y_d\|_{L^2}\) and \(\|u_h\|_{L^2}\) for each \(\alpha\) to quantify how the tracking error decreases as \(\alpha\) decreases (and how the control norm increases). But plots are usually more insightful visually.
+
+- For each run, output or plot \(y_h(x)\) and \(u_h(x)\). Compare \(y_h\) to \(y_d\).
+- If possible, overlay multiple \(y_h\) curves for different \(\alpha\) on one graph, to directly see the difference. Alternatively, separate subplots for different \(\alpha\).
+- Show \(u_h\) similarly. Often, \(u_h\) might be small everywhere except certain regions; you might use a different y-scale or highlight the peaks. If \(u_h\) has large spikes, be sure the plot resolution is enough to capture them (maybe mark the values or use a log scale if appropriate, but linear is usually fine, just make sure the spike is not missed).
+
+Interpret the results in writing as described. Mention any interesting observations: e.g., in case 3, maybe the optimal \(y_h\) overshoots above 1 slightly near the jump (sometimes optimal control of a discontinuous target can cause Gibbs-like phenomena in the state). If you see that, mention it and reason why (likely due to the \(L^2\) minimization trying to balance error on either side of the jump). This shows deeper understanding.
+
+Ensure that each figure has a caption explaining what is shown (e.g., “Optimal state and desired state for case 2 (\(y_d=1\)) with \(\alpha=10^{-6}\). The state approaches 1 in the interior but must drop to 0 at the boundaries, creating boundary layers.”). And refer to the figure in text.
+
+By following these steps and including the relevant discussions, your report will not only present the results but also demonstrate your comprehension of the finite element method and the optimal control problem. It will read as a cohesive, professional analysis suitable for an academic setting.
+

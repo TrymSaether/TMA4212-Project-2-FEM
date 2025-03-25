@@ -218,12 +218,21 @@ A nice benefit is that because \(\Psi_\alpha(\xi)\) is \emph{Lagrange basis}, \(
 In fact, Simpson's rule \emph{exactly} integrates \(f(x)\Psi_\alpha(\xi)\) if \(f\) is at most quadratic on the element, and provides a good approximation in general.
 For the stiffness integrals, \(\phi'_{k,\alpha}\phi'_{k,\beta}\) is a polynomial of degree at most 2, so Simpson's rule actually integrates it exactly.
 Thus, using Simpson's rule for all element integrals yields accurate results.
+\begin{example}{Stiffness matrix \(A\) and load vector \(b\)}{}
+	For the example \ref{exm::poisson_20_2} with \(M=5\) elements, the Global stiffness matrix \(A\) and load vector \(b\) can be visualized as:
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.7\textwidth]{figures/stiffness_matrix_and_load_vector_5_test.png}
+		\caption{Global stiffness matrix \(A\) and load vector \(b\) for the Poisson problem with \(M=5\) elements.}
+	\end{figure}
+\end{example}
+
 Alternatively, one could use 2-point Gaussian quadrature (exact for degree 3 integrands) or even analytic integration if desired.
 
 \subsection*{Assembly procedure}
 We accumulate each element's contributions into the global matrix \(A\) and vector \(b\). A high-level outline of the assembly algorithm is:
 \begin{itemize}
-	\item \emph{Mesh data structures:} 
+	\item \textbf{Mesh data structures:} 
 	prepare an array of node coordinates \mintinline{python}{x_nodes[0...2M]}, and a connectivity list for elements (for each element \(k\), store the global node indices of its three nodes, e.g. \mintinline{python}{[2k, 2k+1, 2k+2]}).
 	\item Initialize global matrix of size \(A \in \mathbb{R}^{(2M+1)\times(2M+1)}\) and global load vector of length \(\mathbf{b} \in \mathbb{R}^{2M+1}\) to zero. 
 	(We include all nodes initially, including boundaries.)
@@ -260,17 +269,51 @@ The linear system \(A U = b\) can thus be solved with e.g. the conjugate gradien
 Because this is a 1D second-order problem, \(A\) will also be banded (bandwidth 3 in this case, since each interior node connects to at most its two neighbors). 
 For efficiency, it's good to use a sparse matrix representation.
 
+\subsection{Implementation and Numerical Experiments and Results}
+
+The \(\mathbb{P}_2\) finite element solver was implemented in Python. The code constructs the mesh and the mapping of local to global degrees of freedom, computes the element stiffness matrices and load vectors using Simpson's rule, assembles the global system, and solves it with a dense linear solver. This implementation naturally accommodates non-uniform meshes by computing the individual element lengths \(h_i\) and applying the corresponding formulas.
+
+\begin{example}{}{poisson_20_1}
+	If we test the code with a simple Poisson problem:
+	\begin{align*}
+	f(x) &= 1, \quad u(0)=u(1)=0 \text{ (Dirichlet BC)}\\
+	u(x) &= \frac{1}{2}x(1-x) \text{ (exact)}
+	\end{align*}
+
+	We obtain that our approximate finite element solution \(u_h(x)\) is almost indistinguishable from the exact solution \(u(x)\) for a uniform mesh with \(N=20\) elements (each \(h=0.05\)).
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.8\textwidth]{figures/fem_solution_20_1.png}
+		\caption{Finite element solution \(u_h(x)\) (solid line) and exact solution \(u(x)\) (dashed line) for the Poisson problem with \(M=20\) elements.}
+	\end{figure}
+	The maximum error is of order \(\mathcal{O}(h^3)\) in the \(L^2\) norm, as expected from the theory.
+\end{example}
+
+\begin{example}{}{poisson_20_2}
+	For a more complex problem, consider the Poisson equation with \(f(x) = 4\pi^2\sin(2\pi x)\). 
+	The exact solution is \(u(x) = \sin(2\pi x)\).
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.8\textwidth]{figures/fem_solution_20_2.png}
+		\caption{Finite element solution \(u_h(x)\) (solid line) and exact solution \(u(x)\) (dashed line) for the Poisson problem with \(M=20\) elements.}
+	\end{figure}
+	Here we observe that the error actually increases as we refine the mesh, which is due to the oscillatory nature of the exact solution.
+	But the error is still smaller, with maximum error of order \(\mathcal{O}(h^4)\), than the previous example. (HVORFOR????)
+\end{example}
+
+\subsection{Error Analysis and Convergence}
+To quantify the error, the \(L^2\)-norm of the error
+\[
+	\|e\|_{L^2} = \sqrt{\int_0^1 |u(x)-u_h(x)|^2\,dx}
+\]
+was computed using a composite Simpson rule on a fine grid. Table~1 summarizes the error for various mesh refinements. As the mesh is refined, halving \(h\) reduces the \(L^2\) error by approximately a factor of 8, confirming the third-order accuracy (\(O(h^3)\)) of the quadratic finite element method in the \(L^2\) norm. In contrast, linear elements (P1) exhibit second-order convergence.
+
+Thus, both theoretical error analysis and numerical experiments demonstrate that the quadratic finite element method is highly accurate for the given Poisson problem.
+
 \subsection{Error Analysis and Convergence}
 For the Poisson problem, since we are using a polynomial degree \(p=2\) (quadratic) basis, we expect a certain rate of convergence as the mesh is refined.
 The exact theory (from finite element error analysis) states that if the true solution \(u\) is sufficiently smooth (here \(u\in H^1_0\cap H^3\) typically), the \(H^1\)-norm error should behave like \(O(h^p) = O(h^2)\) and the \(L^2\)-norm error like \(O(h^{p+1}) = O(h^3)\) for quasi-uniform mesh.
 Using known results (e.g. from the course notes by Curry, Lemmata 4.3 and 4.4), one can show \(\|u - u_h\|_{L^2} \le C\,h^3 \|u\|_{H^3}\) (for some constant \(C\) depending on the solution's third derivative) if the mesh size \(h\) is the maximum element length. Thus we anticipate third-order convergence in the \(L^2\) norm. The \(H^1\) norm error \(\|u-u_h\|_{H^1}\) is expected to be \(O(h^2)\).
-
-\paragraph{Verifying numerically}
-To confirm this, one can perform a convergence test.
-Choose a test problem with known exact solution \(u(x)\). For example, take \(f(x)=1\) on \((0,1)\) with \(u(0)=u(1)=0\). The exact solution is \(u(x) = \frac{x(1-x)}{2}\) (since \(-u''=1\) integrates to a parabola) – this \(u(x)\) is a smooth function in \(H^3\). Run the solver on a sequence of meshes (e.g. \(M=4,8,16,32\) elements) and compute the \(L^2\) error \(\|u - u_h\|_{L^2}\) and \(H^1\) error \(\|u-u_h\|_{H^1}\). The \(L^2\) norm can be approximated by numerical integration: \(\|u - u_h\|_{L^2} \approx \sqrt{\sum_{k=0}^{M-1}\int_{K_k} (u(x)-u_h(x))^2 dx}\) (again Simpson's rule or a finer quadrature can be used per element for this calculation). Then check the rate: if you halve \(h\) (double number of elements), the \(L^2\) error should roughly scale by about \(1/8\) (since \(h^3\) is eight times smaller when \(h\) halves). Similarly, the \(H^1\) error should scale by about \(1/4\) (\(h^2\) behavior). In a log-log plot of error vs. \(h\), \(L^2\) error should have slope ~3, \(H^1\) error slope ~2. Documenting this convergence behavior validates that the implementation is correct and that the theoretical order is achieved.
-
-When writing the report, you might not need to include all the code or trivial verification plots, but you should\textbf{mention that you tested the implementation} on known solutions to ensure correctness (as advised).
-You can then confidently proceed to more interesting cases for the report's results, knowing your code is working and converging correctly.
 
 \section{Finite Element Discretization of the OCP}
 Using the quadratic Lagrange space \(V_h = X_h^2 \cap H^1_0(0,1)\) (dimension \(n=2N-1\) for \(N\) elements), we express the state \(y_h(x)\) and control \(u_h(x)\) in the FEM basis.

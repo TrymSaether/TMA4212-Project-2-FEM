@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage{trymtex}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
@@ -292,7 +293,69 @@ b^{(k)}_{i} &= \int_{K_k}f\phi_i\,dx
 \end{align*}
 
 We integrate exactly using Simpson's rule on each element (which is exact for our polynomial integrands). Homogeneous Dirichlet BCs are imposed by removing the first and last rows/columns and entries of $K$ and $b$. The linear system $K_{h}u_h = b_{h}$ is solved with SciPy sparse direct solver.
-
+\begin{minted}[linenos,frame=lines]{python}
+	import numpy as np
+	
+	def f(x):
+		return np.pi**2 * np.sin(np.pi*x)
+	
+	# Define mesh (example: non-uniform points or uniform linspace)
+	x_nodes = np.array([0, 0.2, 0.5, 0.7, 1.0])  # example non-uniform mesh
+	N = len(x_nodes) - 1
+	
+	# Assign global indices for interior node and midpoint DoFs
+	node_index = [-1] * (N + 1)
+	mid_index = [None] * N
+	glob_idx = 0
+	for j in range(1, N):       # interior nodes
+		node_index[j] = glob_idx
+		glob_idx += 1
+	for i in range(N):          # midpoints
+		mid_index[i] = glob_idx
+		glob_idx += 1
+	
+	# Initialize global stiffness matrix K and load vector F
+	size = glob_idx
+	K = np.zeros((size, size))
+	F = np.zeros(size)
+	
+	# Assemble the global stiffness matrix and load vector
+	psi_vals = {0: np.array([1, 0, 0]),
+				0.5: np.array([0, 1, 0]),
+				1: np.array([0, 0, 1])}
+	psi_prime = {0: np.array([-3, 4, -1]),
+				 0.5: np.array([-1, 0, 1]),
+				 1: np.array([1, -4, 3])}
+	
+	for i in range(N):
+		h_i = x_nodes[i+1] - x_nodes[i]
+		# Element stiffness via Simpson's rule on reference [0,1]:
+		for a in range(3):
+			for b in range(3):
+				# Simpson's rule with reference shape function derivatives
+				val0 = psi_prime[0][a] * psi_prime[0][b]
+				valm = psi_prime[0.5][a] * psi_prime[0.5][b]
+				val1 = psi_prime[1][a] * psi_prime[1][b]
+				K_elem = (val0 + 4*valm + val1) * (1 / (6 * h_i))  # 1/h  (1/6)[...]
+				# Map local (a, b) to global indices
+				p = node_index[i] if a == 0 else (mid_index[i] if a == 1 else node_index[i+1])
+				q = node_index[i] if b == 0 else (mid_index[i] if b == 1 else node_index[i+1])
+				if p != -1 and q != -1:  # both are interior unknowns
+					K[p, q] += K_elem
+		# Element load vector via Simpson's rule
+		f_left  = f(x_nodes[i])
+		f_mid   = f((x_nodes[i] + x_nodes[i+1]) / 2)
+		f_right = f(x_nodes[i+1])
+		F_elem = np.array([f_left, 4 *f_mid, f_right]) * (h_i / 6)
+		# Add to global F
+		for a in range(3):
+			p = node_index[i] if a == 0 else (mid_index[i] if a == 1 else node_index[i+1])
+			if p != -1:
+				F[p] += F_elem[a]
+	
+	# Solve KU = F for unknown coefficients U
+	U = np.linalg.solve(K, F)
+	\end{minted}
 \subsection{Code Reuse for Optimal Control}
 Our solver was structured to reuse assembly routines for the optimal control problem, particularly the mesh and matrix assembly functions for stiffness ($K$) and mass ($M$) matrices.
 

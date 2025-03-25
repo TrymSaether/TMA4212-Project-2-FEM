@@ -1,0 +1,441 @@
+% MODERN LuaLaTeX SETUP & FONTS
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{trymtex}[14/03/2024 Modern LaTeX Setup]
+
+% =============================================
+% 1. CORE PACKAGES
+% =============================================
+\usepackage{fontspec}         % Font selection for LuaLaTeX
+\usepackage[final]{microtype} % Micro-typographic refinements
+\usepackage[english]{babel}  % Language support
+
+% =============================================
+% 2. TEXT & TYPOGRAPHY
+% =============================================
+\usepackage{ragged2e}        % Better text alignment
+\usepackage{enumitem}        % Customize lists
+\usepackage{suffix}          % Command suffix support
+
+% =============================================
+% 3. TABLE & FIGURE SUPPORT
+% =============================================
+% Table packages
+\usepackage{booktabs}        % Professional tables
+\usepackage{tabularx}        % Flexible tables
+\usepackage{array}           % Extended array features
+\usepackage{colortbl}        % Table colors
+\usepackage{multirow}        % Multiple row cells
+\usepackage{siunitx}         % Units and number formatting
+
+% Figure packages
+\usepackage{float}           % Float control
+\usepackage{subcaption}      % Sub-figures support
+\usepackage{minted}          % Code highlighting
+
+% =============================================
+% 4. MATH & ALGORITHMS
+% =============================================
+% Math packages
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage[math-style=ISO, warnings-off={mathtools-colon, mathtools-overbracket}]{unicode-math}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+
+% Custom math commands
+\newcommand{\ep}{\varepsilon}
+\newcommand{\vp}{\varphi}
+\newcommand{\cond}{\operatorname{cond}}
+\newcommand{\bm}[1]{\symbf{#1}}
+\newcommand{\bmat}[1]{\begin{bmatrix}#1\end{bmatrix}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Ccal}{\mathcal{C}}
+\newcommand{\Hcal}{\mathcal{H}}
+\newcommand{\Lcal}{\mathcal{L}}
+\newcommand{\Lrm}{\mathrm{L}}
+\newcommand{\Mcal}{\mathcal{M}}
+\newcommand{\Pcal}{\mathcal{P}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\I}{\mathcal{I}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\dd}[2][]{\frac{d#1}{d{#2}}}
+\newcommand{\ddn}[3][]{\frac{d^{#2}#1}{d{#3}^{#2}}}
+\newcommand{\spann}{\operatorname{span}}
+
+\DeclarePairedDelimiter{\inner}{\langle}{\rangle}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+
+\let\oldmathbf\mathbf
+\renewcommand{\mathbf}{\symbf}
+
+% Font configuration
+% \setmainfont{TeX Gyre Pagella}
+% \setsansfont{TeX Gyre Heros}
+% \setmonofont{Inconsolata}
+% \setmathfont{TeX Gyre Pagella Math}
+
+% Fonts
+% \setmainfont{Fira Sans Extra Condensed}
+% \setsansfont{Fira Sans}
+% \setmonofont{Fira Code}
+% \setmathfont{Fira Math}[Scale=MatchLowercase]
+
+\setmainfont{IBM Plex Serif}
+\setsansfont{IBM Plex Sans}
+\setmonofont{IBM Plex Mono}
+\setmathfont{STIX Two Math}[Scale=MatchLowercase]
+
+% Algorithm support
+\usepackage[lined,boxed,commentsnumbered,linesnumbered]{algorithm2e}
+\SetAlgorithmName{Algorithm}{Algorithm}{List of Algorithms}
+\SetAlCapFnt{\color{alg-color}\bfseries}
+\SetAlCapNameSty{TitleBox}
+\DontPrintSemicolon
+\SetKwProg{Fn}{Function}{:}{}
+\SetKwFunction{Error}{error}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+
+% =============================================
+% 5. PAGE LAYOUT & HYPERREF
+% =============================================
+\usepackage[most]{tcolorbox}
+\usepackage[
+  headheight=15pt,
+  margin=2.5cm,
+  includeheadfoot
+]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+% Header and footer configuration
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}  % Clear all header/footer fields
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ToC configuration
+\usepackage{tocloft}
+\usepackage{suffix}
+\renewcommand{\cftsubsubsecfont}{\normalfont}
+\renewcommand{\cftsubsubsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cftsubsubsecafterpnum}{\hspace*{2em}}
+
+% Hyperref configuration
+\usepackage[colorlinks]{hyperref}
+\usepackage{bookmark}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  filecolor=magenta,
+  urlcolor=cyan,
+  pdftitle={Modern LaTeX Setup},
+  pdfauthor={Trym Sæther},
+  pdfsubject={Modern LaTeX Setup},
+  pdfkeywords={LaTeX, modern, setup}
+}
+
+% Section configuration
+\newcommand{\problem}[2]{\large{\textbf{Problem #1} \hfill \normalfont\normalsize\textit{#2}}}
+\newcommand{\subproblem}[1]{\normalsize{\textbf{(#1)}}}
+
+% =============================================
+% 6. COLOR & THEOREM ENVIRONMENTS
+% =============================================
+
+% Color definitions
+\definecolor{def-color}{HTML}{E40125}    % Bright red
+\definecolor{thm-color}{HTML}{1346E4}    % Royal blue
+\definecolor{lem-color}{HTML}{05C4D9}    % Light blue/cyan
+\definecolor{exm-color}{HTML}{21340A}    % Dark green
+\definecolor{rem-color}{HTML}{18B640}    % Medium green
+\definecolor{prop-color}{HTML}{9C27B0}    % Purple
+\definecolor{cor-color}{HTML}{FF5722}     % Deep Orange
+\definecolor{alg-color}{HTML}{FF8F00}     % Dark Orange
+
+% Table colors
+\definecolor{filing-color}{HTML}{607D8B}    % Blue Grey
+\definecolor{railing-color}{HTML}{795548}   % Brown
+\definecolor{flag-color}{HTML}{009688}      % Teal
+\definecolor{yescolor}{RGB}{200, 255, 200}  % Light green
+\definecolor{nocolor}{RGB}{255, 200, 200}   % Light red
+\definecolor{headerblue}{RGB}{225, 238, 255}
+
+% Table commands
+\newcommand{\yes}{\cellcolor{yescolor} Yes}
+\newcommand{\no}{\cellcolor{nocolor} No}
+\newcommand{\algo}[1]{\parbox[t]{3cm}{\footnotesize\RaggedRight #1}}
+\newcolumntype{Y}{>{\footnotesize}c}  % Centered, small font for Yes/No
+\newcolumntype{Z}{>{\footnotesize\RaggedRight}X}  % Explanations column
+
+% NTNU color scheme
+\definecolor{ntnu-blue}{HTML}{00509e}
+\definecolor{ntnu-green}{HTML}{BCD025}
+\definecolor{ntnu-lightblue}{HTML}{6096D0}
+\definecolor{ntnu-orange}{HTML}{EF8114}   
+\definecolor{ntnu-sand}{HTML}{CFB887}    
+\definecolor{ntnu-magenta}{HTML}{B01B81}  
+\definecolor{ntnu-yellow}{HTML}{F7D019}   
+\definecolor{ntnu-purple}{HTML}{482776}   
+\definecolor{ntnu-turquoise}{HTML}{3CBFBE}
+
+% Theorem environments
+\tcbset{
+  base theorem style/.style={
+      enhanced,
+      fonttitle=\bfseries,
+      breakable,
+      before skip=10pt,
+      after skip=10pt,
+      separator sign={.},
+      sharp corners
+    }
+}
+\newtcbtheorem{definition}{Definition}{%
+  enhanced jigsaw,
+  colback=def-color!10,
+  colframe=def-color!80!black,
+  fonttitle=\bfseries,
+  separator sign=.,
+  label separator={},
+  sharp corners,
+  top=2pt,
+  bottom=2pt,
+  left=2pt,
+  right=2pt,
+  before skip=10pt,
+  after skip=10pt,
+  breakable
+}{def:}
+
+\newtcbtheorem{theorem}{Theorem}{%
+  enhanced jigsaw,
+  colback=thm-color!10,
+  colframe=thm-color!80!black,
+  fonttitle=\bfseries,
+  coltitle=black,
+  attach boxed title to top left={xshift=10pt,yshift=-\tcboxedtitleheight/2},
+  boxed title style={
+      colback=thm-color!10,
+      colframe=thm-color!80!black,
+      height=16pt,
+      bean arc
+    },
+  separator sign=.,
+  label separator={},
+  sharp corners,
+  top=6pt,
+  bottom=2pt,
+  left=2pt,
+  right=2pt,
+  before skip=10pt,
+  after skip=10pt,
+  breakable
+}{thm:}
+
+\newtcbtheorem{lemma}{Lemma}{%
+  enhanced jigsaw,
+  colback=lem-color!10,
+  colframe=lem-color!80!black,
+  boxrule=0pt,
+  fonttitle=\bfseries,
+  attach boxed title to top left={yshift=-\tcboxedtitleheight},
+  boxed title style={
+      boxrule=0pt,
+      boxsep=2pt,
+      colback=lem-color!80!black,
+      colframe=lem-color!80!black,
+      interior code={\fill[lem-color!80!black]
+          (interior.north west)--
+          (interior.south west)--
+          ([xshift=-2mm]interior.south east)--
+          ([xshift=2mm]interior.north east)--cycle;
+        }
+    },
+  separator sign=.,
+  label separator={},
+  frame hidden,
+  borderline north={1pt}{0pt}{lem-color!80!black},
+  before upper={\hspace{\tcboxedtitlewidth}},
+  sharp corners,
+  top=2pt,
+  bottom=2pt,
+  left=5pt,
+  right=5pt,
+  before skip=10pt,
+  after skip=10pt,
+  breakable
+}{lem}
+
+\newtcbtheorem{example}{Example}{%
+  base theorem style,
+  colback=white,
+  colframe=white,
+  borderline west={2pt}{0pt}{exm-color},
+  left=8pt,
+  before skip=10pt,
+  after skip=10pt,
+  coltitle=exm-color
+}{exm:}
+
+\newtcbtheorem{remark}{Remark}{%
+  base theorem style,
+  colback=white,
+  colframe=white,
+  borderline west={2pt}{0pt}{rem-color},
+  left=8pt,
+  before skip=10pt,
+  after skip=10pt,
+  coltitle=black
+}{rem:}
+
+\newtcbtheorem{proposition}{Proposition}{
+  enhanced jigsaw,
+  colback=prop-color!10,
+  colframe=prop-color!80!black,
+  fonttitle=\bfseries,
+  attach boxed title to top left={yshift=-\tcboxedtitleheight},
+  boxed title style={
+      boxrule=0pt,
+      boxsep=2.5pt,
+      colback=prop-color!80!black,
+      colframe=prop-color!80!black,
+      sharp corners=uphill
+    },
+  separator sign=.,
+  label separator={},
+  top=\tcboxedtitleheight,
+  bottom=2pt,
+  left=2pt,
+  right=2pt,
+  before skip=10pt,
+  after skip=10pt,
+  breakable
+}{prop:}
+
+\newtcbtheorem{corollary}{Corollary}{%
+  enhanced jigsaw,
+  colback=cor-color!10,
+  colframe=cor-color!80!black,
+  boxrule=0pt,
+  fonttitle=\bfseries,
+  coltitle=black,
+  separator sign={},
+  label separator={},
+  description font=\normalfont,
+  description delimiters={(}{)},
+  attach title to upper,
+  after title={.\ },
+  frame hidden,
+  borderline west={2pt}{0pt}{cor-color},
+  sharp corners,
+  top=2pt,
+  bottom=2pt,
+  left=5pt,
+  right=5pt,
+  before skip=10pt,
+  after skip=10pt,
+  breakable
+}{cor:}
+
+\renewenvironment{proof}[1][\proofname]{%
+  \begin{tcolorbox}[
+      blanker,
+      borderline west={2pt}{0pt}{thm-color},
+      before skip=10pt,
+      after skip=10pt,
+      left=8pt
+    ]
+    \textbf{#1}.
+    }{\end{tcolorbox}}
+
+% Updated box environments
+\newtcolorbox{filingbox}[2][]{enhanced jigsaw,
+  breakable,
+  colback=filing-color!10,
+  colframe=filing-color!80!black,
+  fonttitle=\bfseries,
+  coltitle=black,
+  attach boxed title to top left={xshift=10pt,yshift=-\tcboxedtitleheight/2},
+  boxed title style={
+      colback=filing-color!10,
+      colframe=filing-color!80!black,
+      height=16pt,
+      bean arc
+    },
+  title={#2},
+  before skip=10pt,
+  after skip=10pt,
+  top=6pt,
+  bottom=2pt,
+  left=2pt,
+  right=2pt,
+  #1
+}
+
+\newtcolorbox{railingbox}[2][]{enhanced jigsaw,
+  breakable,
+  colback=railing-color!10,
+  colframe=railing-color!80!black,
+  fonttitle=\bfseries,
+  title={#2},
+  attach boxed title to top left={yshift=-\tcboxedtitleheight},
+  boxed title style={
+      boxrule=0pt,
+      boxsep=2.5pt,
+      colback=railing-color!80!black,
+      colframe=railing-color!80!black,
+      sharp corners=uphill
+    },
+  top=\tcboxedtitleheight,
+  bottom=2pt,
+  left=2pt,
+  right=2pt,
+  before skip=10pt,
+  after skip=10pt,
+  #1
+}
+
+\newtcolorbox{flagbox}[2][]{enhanced jigsaw,
+  breakable,
+  colback=flag-color!10,
+  colframe=flag-color!80!black,
+  boxrule=0pt,
+  fonttitle=\bfseries,
+  coltitle=black,
+  title={#2},
+  attach title to upper,
+  frame hidden,
+  borderline west={2pt}{0pt}{flag-color},
+  sharp corners,
+  top=2pt,
+  bottom=2pt,
+  left=5pt,
+  right=5pt,
+  before skip=10pt,
+  after skip=10pt,
+  #1
+}
+% =============================================
+% 7. GRAPHICS & TIKZ
+% =============================================
+\usetikzlibrary{arrows.meta, positioning}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+
+% =============================================
+% X. CUSTOM COMMANDS & PACKAGES
+% =============================================
+\usepackage[autostyle, english=american]{csquotes}  % Smart quotes
+
+
+\endinput

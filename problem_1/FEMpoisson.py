@@ -94,13 +94,8 @@ class FEMPoissonSolver:
         hs = np.array(hs)
         errors = np.array(errors)
         p = np.polyfit(np.log(hs), np.log(errors), 1)
+        ref_hs = hs/hs[0]
 
-        if name == '1':
-            ref_hs = hs[0]/hs
-        elif name == '2':
-            ref_hs = hs/hs[0]
-        else:
-            ref_hs = hs/hs[0]
         # Plot convergence
         axs[1].loglog(hs, errors, 'bo-', linewidth=2, markersize=8, label=f'$\\|e_h\\|_{{L^2}} = \\mathcal{{O}}(h^{{{p[0]:.2f}}})$')
         axs[1].loglog(hs, errors[0]*(ref_hs)**3, 'r--', linewidth=2, label='$\\mathcal{O}(h^3)$')

@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scienceplots
-plt.style.use('science')
 
+plt.style.use('science')
 
 class FEMPoissonSolver:
     def __init__(self, M, f, exact):
@@ -59,14 +59,31 @@ class FEMPoissonSolver:
         return self.u
 
     def L2_error(self):
-        delta = self.h / 2
         error_sq = 0
+        delta = self.h / 3.0
         for i in range(self.N):
             err = self.exact(self.nodes[i]) - self.u[i]
             weight = 0.5 if (i == 0 or i == self.N - 1) else 1.0
             error_sq += weight * err**2
-        return np.abs(np.sqrt(error_sq * delta))
-    
+        return np.sqrt(error_sq * delta)
+    def plot_solution(self, fine_mesh=200, name='test'):
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+        
+        x_fine = np.linspace(0, 1, fine_mesh)
+        u_exact = np.array([self.exact(x) for x in x_fine])
+        # Plot exact solution and FEM solution
+        ax.plot(x_fine, u_exact, 'r-', linewidth=2, label='Exact Solution')
+        ax.plot(self.nodes, self.u, 'bo-', markersize=5, label='FEM Solution')
+        ax.set_title('FEM vs Exact Solution')
+        ax.set_xlabel('x')
+        ax.set_ylabel('u(x)')
+        ax.legend()
+        ax.grid(True)
+        
+        plt.tight_layout()
+        plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
+        plt.show()
+        
     def plot(self, fine_mesh=200, name='test'):
         fig, axs = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={'width_ratios': [2, 1]}, dpi=200)        
         
@@ -133,5 +150,41 @@ class FEMPoissonSolver:
         ax[1].set_ylabel('Value')
         plt.tight_layout()
         plt.savefig(f'figures/stiffness_matrix_and_load_vector_{self.M}_{name}.png')
+        plt.show()
+        
+    def convergence_test(self):
+        M_vals = [5, 10, 20, 40, 80, 160]
+        errors = []
+        hs = []
+         # Compute L2 error for each M
+        for M in M_vals:
+            temp_solver = FEMPoissonSolver(M, self.f, self.exact)
+            temp_solver.assemble()
+            temp_solver.solve()
+            errors.append(temp_solver.L2_error())
+            hs.append(1.0/M)
+        
+        hs = np.array(hs)
+        errors = np.array(errors)
+        p = np.polyfit(np.log(hs), np.log(errors), 1)
+        return p[0], errors, hs
+    
+    def plot_convergence(self, name='test'):
+        p, errors, hs = self.convergence_test()
+        ref_hs = hs/hs[0]
+        
+        # Plot convergence
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+        ax.loglog(hs, errors, 'bo-', linewidth=2, markersize=8, label=f'$\\|e_h\\|_{{L^2}} = \\mathcal{{O}}(h^{{{p:.2f}}})$')
+        ax.loglog(hs, errors[0]*(ref_hs)**3, 'r--', linewidth=2, label='$\\mathcal{O}(h^3)$')
+        ax.loglog(hs, errors[0]*(ref_hs)**2, 'g--', linewidth=2, label='$\\mathcal{O}(h^2)$')
+        ax.set_xlabel('Mesh size $h$')
+        ax.set_ylabel('$\\|e\\|_{\\mathrm{L}^2}$')
+        ax.grid(True, which='both', ls='--', alpha=0.7)
+        ax.legend()
+        ax.set_title('Convergence Plot')
+        
+        plt.tight_layout()
+        plt.savefig(f'figures/convergence_plot_{self.M}_{name}.png')
         plt.show()
         

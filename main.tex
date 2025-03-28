@@ -381,6 +381,160 @@ subject to
 where $\bar{y}_d$ is the interpolation of $y_d$ onto $X^2_h$, $V_h = X^2_h \cap H^1_0(\Omega)$, and $a$ is the bilinear form from Part 1.
 
 
+\subsection{2a}
 
+\noindent
+$\displaystyle
+\min_{y,u}\,J(y,u)
+\;=\;
+\tfrac12\,\int_{0}^{1}\bigl(y(x)-y_{d}(x)\bigr)^{2}\,dx
+\;+\;\tfrac{\alpha}{2}\,\int_{0}^{1}\bigl(u(x)\bigr)^{2}\,dx
+$
+
+\noindent
+subject to:
+\[
+-\Delta y(x)\;=\;u(x),\quad y(0)=y(1)=0,
+\]
+\noindent
+for $x\in[0,1]$.
+
+\bigskip
+
+\noindent
+\textbf{State:} 
+\[
+y \;\approx\; y_{h}
+\;=\;
+\sum_{i=1}^{2N-1}\,y_{i}\;\Phi_{i}(x).
+\]
+
+\noindent
+\textbf{Control:} 
+\[
+u \;\approx\; u_{h}
+\;=\;
+\sum_{i=1}^{2W-1}\,u_{i}\;\Phi_{i}(x).
+\]
+
+\noindent
+\textbf{Desired state:}
+\[
+y_{d}\;\approx\;\,\bar{y}_{d}
+\;=\;
+\sum_{i=1}^{2N-1}\,\bigl(\bar{y}_{d}\bigr)_{i}\,\Phi_{i}(x).
+\]
+
+\noindent
+As we approximate these continuous functions by finite-dimensional approximation in the second degree,
+therefore the functions $y$, $y_{d}$, and $u$ become vectors. Thus we have two integrals to discretize:
+
+\[
+J(y,u)
+\;=\;
+\tfrac12\int_{0}^{1}\bigl(y - y_{d}\bigr)^{2}\,dx
+\;+\;
+\tfrac{\alpha}{2}\int_{0}^{1}u^{2}\,dx.
+\]
+
+\noindent
+Substituting our approximations:
+
+\[
+\tfrac12\,\int_{0}^{1}\bigl(y_{h}-y_{d}\bigr)^{2}\,dx
+\;+\;
+\tfrac{\alpha}{2}\,\int_{0}^{1}u_{h}^{2}\,dx
+\;=\;
+\tfrac12 \int_{0}^{1}
+\Bigl(\sum_{i=1}^{2N-1}y_{i}\,\Phi_{i}(x)
+-
+\sum_{i=1}^{2N-1}(\bar{y}_{d})_{i}\,\Phi_{i}(x)\Bigr)^{2}
+dx
+\;+\;
+\tfrac{\alpha}{2}\,\int_{0}^{1}
+\Bigl(\sum_{j=1}^{2W-1}u_{j}\,\Phi_{j}(x)\Bigr)^{2}dx.
+\]
+
+\bigskip
+
+\noindent
+\textbf{Starting with $(y-y_{d})$} we can rewrite this into:
+
+\[
+(y - y_{d})(x)
+\;\approx\;
+\sum_{i=1}^{2N-1}\bigl[y_{i} - (\bar{y}_{d})_{i}\bigr]\;\Phi_{i}(x),
+\]
+hence $(\,y - y_{d}\,)$ is a vector of coefficients times the basis $\Phi_{i}(x)$. Substituting this back into
+the first integral we obtain:
+
+\[
+\tfrac12\,\int_{0}^{1}
+\sum_{i=1}^{2N-1}\bigl[y_{i} - (\bar{y}_{d})_{i}\bigr]\,\Phi_{i}(x)
+\;\sum_{k=1}^{2N-1}\bigl[y_{k} - (\bar{y}_{d})_{k}\bigr]\,\Phi_{k}(x)\,dx.
+\]
+
+\noindent
+Pull out the coefficients:
+
+\[
+\tfrac12
+\sum_{i=1}^{2N-1}\sum_{k=1}^{2N-1}
+\bigl[y_{i} - (\bar{y}_{d})_{i}\bigr]\;\bigl[y_{k} - (\bar{y}_{d})_{k}\bigr]
+\int_{0}^{1}\Phi_{i}(x)\,\Phi_{k}(x)\,dx.
+\]
+
+\noindent
+This is equivalent to the $(L^2(\Omega))$ inner product of two polynomial approximations, satisfying the identity
+
+\[
+\langle u,v\rangle_{L^2(\Omega)}
+\;=\;
+\sum_{i,k} u_{i}\,v_{k}\int_{\Omega}\Phi_{i}(x)\,\Phi_{k}(x)\,dx
+\;=\;
+\mathbf{u}^{T}M\,\mathbf{v},
+\]
+where $M$ is the mass matrix as the integral of the basis functions is by definition equal to the $i,k$-th
+element of $M$.
+
+\medskip
+
+\noindent
+Thus the first integral can be written as:
+\[
+\tfrac12\,(\,(\mathbf{y}-\bar{\mathbf{y}}_{d})^{T}M(\mathbf{y}-\bar{\mathbf{y}}_{d})\,),
+\]
+and equivalently, the second integral
+\[
+\tfrac{\alpha}{2}\,\int_{0}^{1}\bigl(u(x)\bigr)^{2}\,dx
+\]
+becomes
+\[
+\tfrac{\alpha}{2}\,\mathbf{u}^{T}\,M\,\mathbf{u}.
+\]
+Hence the full equation is:
+\[
+G(y,u)
+\;=\;
+\tfrac12\,(\,\mathbf{y}-\bar{\mathbf{y}}_{d}\,)^{T}M(\,\mathbf{y}-\bar{\mathbf{y}}_{d}\,)
+\;+\;
+\tfrac{\alpha}{2}\,\mathbf{u}^{T}M\,\mathbf{u}.
+\]
+
+\bigskip
+
+\noindent
+From task 1, the standard weak form of $-\Delta y = u$ with Dirichlet conditions is
+\[
+\int_{0}^{1}y'(x)\,v'(x)\,dx
+\;=\;
+\int_{0}^{1}u(x)\,v(x)\,dx,
+\]
+where the left side of the equation is the stiffness matrix $A$, and the right side is once again the mass matrix $M$.
+Thus the discrete PDE constraint is:
+\[
+A\,\mathbf{y}\;=\;M\,\mathbf{u},
+\]
+meaning that $B = A$ and $F = M$.
 
 \end{document}

@@ -95,7 +95,7 @@ class FEMPoissonSolver:
         plt.show()
         
     def plot(self, fine_mesh=200, name='test'):
-        fig, axs = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={'width_ratios': [2, 1]}, dpi=200)        
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={'width_ratios': [2, 1]}, dpi=150)        
         
         x_fine = np.linspace(0, 1, fine_mesh)
         u_exact = np.array([self.exact(x) for x in x_fine])
@@ -134,7 +134,7 @@ class FEMPoissonSolver:
         axs[1].set_title('Convergence Plot')
         
         plt.tight_layout()
-        # plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
+        plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
         plt.show()
         
     def plot_stiffness_matrix_and_load_vector(self, name='test'):
@@ -186,26 +186,45 @@ class FEMPoissonSolver:
     
     def print_convergence_table(self):
         hs, (p_L2, p_H1), (errors_L2, errors_H1) = self.convergence_test()
-        # Print header
-        print(f"{'Convergence Table':^42}")
-        print("-" * 42)
-        print(f"{'M':>6} {'h':>12} {'L2 Error':>12} {'Rate L2':>12} {'H1 Error':>12} {'Rate H1':>12}")
-        print("-" * 42)
+        
+        # Calculate width for clean formatting
+        width = 80
+        col_width = 10
+        
+        # Print header with centered title
+        print("\n" + "Convergence Analysis".center(width))
+        print("=" * width)
+        headers = ["M", "h", "L2 Error", "Rate L2", "Ratio L2", "H1 Error", "Rate H1", "Ratio H1"]
+        print("".join(h.center(col_width) for h in headers))
+        print("-" * width)
 
-        # Print each row
+        # Print rows with aligned columns
         for i in range(len(hs)):
             if i == 0:
-                rate_L2 = '-'
-                rate_H1 = '-'
+                rate_L2 = rate_H1 = ratio_L2 = ratio_H1 = "-"
             else:
-                rate_L2 = f"{np.log(errors_L2[i-1]/errors_L2[i])/np.log(hs[i-1]/hs[i]):.2f}"
-                rate_H1 = f"{np.log(errors_H1[i-1]/errors_H1[i])/np.log(hs[i-1]/hs[i]):.2f}"
-            print(f"{int(1/hs[i]):>6d} {hs[i]:>12.4e} {errors_L2[i]:>12.4e} {rate_L2:>12} {errors_H1[i]:>12.4e} {rate_H1:>12}")
-        print("-" * 42)
-        print(f"Convergence rates: L2: {p_L2:.2f}, H1: {p_H1:.2f}")
-        print(f"Final L2 error: {errors_L2[-1]:.4e}")
-        print(f"Final H1 error: {errors_H1[-1]:.4e}")
-        print("-" * 42)
+                rate_L2 = f"{np.log(errors_L2[i-1]/errors_L2[i])/np.log(2):.2f}"
+                rate_H1 = f"{np.log(errors_H1[i-1]/errors_H1[i])/np.log(2):.2f}"
+                ratio_L2 = f"{errors_L2[i-1]/errors_L2[i]:.2f}"
+                ratio_H1 = f"{errors_H1[i-1]/errors_H1[i]:.2f}"
+            
+            row = [
+                f"{1<<i+1:d}",
+                f"{hs[i]:.2e}",
+                f"{errors_L2[i]:.2e}",
+                rate_L2,
+                ratio_L2,
+                f"{errors_H1[i]:.2e}",
+                rate_H1,
+                ratio_H1
+            ]
+            print("".join(str(item).center(col_width) for item in row))
+
+        # Print summary
+        print("=" * width)
+        print(f"Overall convergence rates - L2: {p_L2:.2f}, H1: {p_H1:.2f}")
+        print(f"Final errors - L2: {errors_L2[-1]:.2e}, H1: {errors_H1[-1]:.2e}")
+        print("=" * width + "\n")
         
     def plot_convergence(self, name='test'):
         hs, (p_L2, p_H1), (errors_L2, errors_H1) = self.convergence_test()

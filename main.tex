@@ -122,8 +122,8 @@ For a mesh of \(N\) elements, there are \(N+1\) nodes and \(N\) midpoints, but t
 	\label{fig:quadratic-shape-functions}
 \end{figure}
 Using this basis, any \(u_h \in V_h\) can be written as
-\[ 
-u_h(x) = \sum_{j=1}^{2N-1} U_j\,\varphi_j(x)\, ,
+\[
+	u_h(x) = \sum_{j=1}^{2N-1} U_j\,\varphi_j(x)\, ,
 \]
 where \(U_j\) are the unknown coefficients (which correspond to the values of \(u_h\) at each interior node or midpoint). Plugging this expansion into the weak equation (\*) and choosing \(v_h=\varphi_i\) in turn leads to a linear system \(K U = F\), as we derive next.
 
@@ -144,20 +144,20 @@ The reference integral \(\int_0^1 \Psi'_\alpha(\xi)\Psi'_\beta(\xi)d\xi\) is a c
 Using these, one finds
 
 \[
-\int_0^1 \Psi'_\alpha(\xi)\,\Psi'_\beta(\xi)\,d\xi = 
-\frac{1}{3}\begin{pmatrix} 
-	7 & -8 & 1 \\ -8 & 16 & -8 \\ 1 & -8 & 7
-\end{pmatrix}_{\!\alpha\beta}\,.
+	\int_0^1 \Psi'_\alpha(\xi)\,\Psi'_\beta(\xi)\,d\xi =
+	\frac{1}{3}\begin{pmatrix}
+		7 & -8 & 1 \\ -8 & 16 & -8 \\ 1 & -8 & 7
+	\end{pmatrix}_{\!\alpha\beta}\,.
 \]
 
 Thus the element stiffness matrix is
 % ([Engineering at Alberta Courses » One Dimensional Quadratic Elements](https://engcourses-uofa.ca/books/introduction-to-solid-mechanics/finite-element-analysis/fea-in-one-dimension/one-dimensional-quadratic-elements/#:~:text=Image%3A%20%5C%5BK,pmatrix))
 \[
 	K^{(i)} = \frac{1}{3 h_i}
-	\begin{pmatrix} 
-		7 & -8 & 1\\ 
-		-8 & 16 & -8\\ 
-		1 & -8 & 7
+	\begin{pmatrix}
+		7  & -8 & 1  \\
+		-8 & 16 & -8 \\
+		1  & -8 & 7
 	\end{pmatrix}\,.
 \]
 In particular, for uniform meshes (\(h_i=h\)) this shows the well-known pattern that on each element \(K^{(i)}\) has diagonal entries \(\frac{7}{3h}\), immediate off-diagonals \(-\frac{8}{3h}\), and the corner entries \(\frac{1}{3h}\).
@@ -166,12 +166,12 @@ Globally, each interior node is shared by two elements, which will yield the pro
 
 \paragraph{Local load vector:} For element \(K_i\), we change variables \(x = x_i + \xi h_i\) to get
 \[
-F^{(i)}_\alpha = \int_{0}^{1} f(x_i + \xi h_i)\,\Psi*\alpha(\xi)\,h*i\,d\xi.
+	F^{(i)}_\alpha = \int_{0}^{1} f(x_i + \xi h_i)\,\Psi*\alpha(\xi)\,h*i\,d\xi.
 \]
 We approximate this integral with \textbf{Simpson's rule}, which is exact for polynomials up to cubic and is very accurate for smooth \(f\).
 Simpson's rule on \([0,1]\) uses the nodes \(\xi=0,0.5,1\) and yields
 \[
-\int_{0}^{1} g(\xi)\,d\xi \approx \frac{1}{6}\Big[g(0)+4g(0.5)+g(1)\Big].
+	\int_{0}^{1} g(\xi)\,d\xi \approx \frac{1}{6}\Big[g(0)+4g(0.5)+g(1)\Big].
 \]
 Applying this to \(g(\xi)=f(x_i+h_i\xi)\Psi_\alpha(\xi)\), and noting the Lagrange property \(\Psi_\alpha(\xi_{\beta})=\delta_{\alpha\beta}\) at \(\xi_0=0,\;\xi_1=0.5,\;\xi_2=1\), we get:
 
@@ -285,35 +285,41 @@ We tested the solver on an example problem where the exact solution is known:
 \]
 solves \(-u''=f\) on \([0,1]\) with \(u(0)=u(1)=0\).
 We use this smooth sine solution to verify the implementation's accuracy.
-For instance, with a uniform mesh of \(N=4\) elements (each \(h=0.25\)), the computed solution \(u_h(x)\) nearly coincides with \(u(x)\).
+For instance, with a uniform mesh of \(N=20\) elements (each \(h=0.05\)), the computed solution \(u_h(x)\) nearly coincides with the exact \(u(x)\).
+And as shown in \href{fig:solution_20_2} the plots \(u_h\) and \(u\) for \(N=20\), are visually indistinguishable.
+
+The maximum error in this case is on the order of \(10^{-3.5}\) in the \(L^2\) norm, and the solution is very smooth.
+
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=0.8\textwidth]{figures/fem_solution_20_1.png}
-	\caption{Finite element solution \(u_h(x)\) obtained with \(N=4\) quadratic elements (blue dotted-solid line) versus the exact solution \(u(x)=\sin(\pi x)\) (red solid line).
+	\includegraphics[width=0.9\textwidth]{figures/fem_solution_20_2.png}
+	\caption{Finite element solution \(u_h(x)\) obtained with \(N=20\) quadratic elements (blue dotted-solid line) versus the exact solution \(u(x)=\sin(\pi x)\) (red solid line).
 		The curves are almost identical at this scale, illustrating the high accuracy of the \(\mathbb{P}_2 \) approximation.}
+	\label{fig:solution_20_2}
 \end{figure}
-The maximum error is of order \(\mathcal{O}(h^3)\) in the \(L^2\) norm, as expected from the theory.
+The maximum error is of order \(\mathcal{O}(h^{3.5})\) in both \(L^2\) and \(\mathcal{H}^1\) norms, as expected from the theory \ref{sec:error_analysis}.
 
-In figure 1 the plots \(u_h\) and \(u\) for \(N=4\), are visually indistinguishable.
-The maximum error in this case is on the order of \(10^{-3}\).
-
-To quantify the error, we computed the \(L^2\) norm of the error \(e(x)=u(x)-u_h(x)\) for various mesh refinements. The \(L^2\) error is defined as \(\|e\|_{L^2} = \sqrt{\int_0^1 |e(x)|^2 dx}\). We approximated this integral with a very fine composite Simpson rule to ensure negligible quadrature error. The results are shown in Table 1. We see that as the mesh is refined, the \(L^2\) error decreases rapidly.
+To quantify the error, we computed the \(L^2\) norm of the error \(e(x)=u(x)-u_h(x)\) for various mesh refinements.
+The \(L^2\) error is defined as \(\|e\|_{L^2} = \sqrt{\int_0^1 |e(x)|^2 dx}\).
+We approximated this integral with a very fine composite Simpson rule to ensure negligible quadrature error.
+The results are shown in Table 1.
+We see that as the mesh is refined, the \(L^2\) error decreases rapidly.
 
 \begin{table}[h]
 	\centering
-	\begin{tabular}{|c|c|c|c|c|c|}
-			\hline
-			\(M\) & \(h\) & \(L^2\) Error & Rate \(L^2\) & \(\mathcal{H}^1\) Error & Rate \(\mathcal{H}^1\) \\
-			\hline
-			2     & 5.00e-01 & 1.27e-02 & -- & 2.65e-02 & -- \\
-			4     & 2.50e-01 & 1.04e-03 & 3.61 & 2.11e-03 & 3.65 \\
-			8     & 1.25e-01 & 8.99e-05 & 3.53 & 1.77e-04 & 3.58 \\
-			16    & 6.25e-02 & 7.91e-06 & 3.51 & 1.52e-05 & 3.54 \\
-			32    & 3.13e-02 & 6.98e-07 & 3.50 & 1.32e-06 & 3.52 \\
-			64    & 1.56e-02 & 6.17e-08 & 3.50 & 1.16e-07 & 3.51 \\
-			128   & 7.81e-03 & 5.45e-09 & 3.50 & 1.02e-08 & 3.51 \\
-			\hline
-		\end{tabular}
+	\begin{tabular}{|c|c|c|c|c|c|c|c|}
+		\hline
+		\(M\) & \(h\)    & \(L^2\) Error & Rate \(L^2\) & Ratio \(L^2\) & \(H^1\) Error & Rate \(H^1\) & Ratio \(H^1\) \\
+		\hline
+		2     & 5.00e-01 & 1.27e-02      & --           & --            & 2.65e-02      & --           & --            \\
+		4     & 2.50e-01 & 1.04e-03      & 3.61         & 12.24         & 2.11e-03      & 3.65         & 12.54         \\
+		8     & 1.25e-01 & 8.99e-05      & 3.53         & 11.53         & 1.77e-04      & 3.58         & 11.96         \\
+		16    & 6.25e-02 & 7.91e-06      & 3.51         & 11.37         & 1.52e-05      & 3.54         & 11.65         \\
+		32    & 3.12e-02 & 6.98e-07      & 3.50         & 11.33         & 1.32e-06      & 3.52         & 11.48         \\
+		64    & 1.56e-02 & 6.17e-08      & 3.50         & 11.32         & 1.16e-07      & 3.51         & 11.40         \\
+		128   & 7.81e-03 & 5.45e-09      & 3.50         & 11.32         & 1.02e-08      & 3.51         & 11.36         \\
+		\hline
+	\end{tabular}
 	\caption{\(L^2\)-norm of error for \(u(x)=\sin(\pi x)\) using \(\mathbb{P}_2 \) elements on an equidistributed (uniform) mesh of \(N\) elements. The error decreases roughly by a factor of 8 when \(N\) is doubled, indicating third-order (\(O(h^3)\)) convergence in the \(L^2\) norm.}
 	\label{tab:convergence}
 \end{table}
@@ -322,35 +328,36 @@ The error ratio for each mesh refinement (last column) approaches 8, confirming 
 This is consistent with the expected third-order convergence of quadratic elements in the \(L^2\) norm (since \(h\) is halved, error \(\sim Ch^3\) is reduced by \(2^3=8\)).
 In contrast, using linear (\(P1\)) elements on the same problem yields an \(L^2\) error reduction of about \(2^2=4\) per halving of \(h\) (second-order convergence).
 
-\subsection{Theoretical Error Analysis and Convergence Rate}
-
+\subsection{Theoretical Error Analysis and Convergence Rate (DETTE MÅ FIKSES, FORDI VI FÅR ORDEN 3.5 i både L2 og H1 NORM)}
+\label{sec:error_analysis}
 The above numerical observations can be explained by finite element approximation theory.
 In general, for a polynomial of degree \(r\), one expects the \(H^1\)-norm error to be \(O(h^r)\) and the \(L^2\)-norm error to be \(O(h^{r+1})\) for sufficiently smooth solutions
-% ([](https://wiki.math.ntnu.no/_media/tma4212/2018v/master2.pdf#:~:text=,Hr%2B1)). 
 
 In our case, \(r=2\) (quadratic elements).
-Thus, if the exact solution \(u\) is sufficiently smooth (\(u \in H^3(\Omega)\)), the interpolation error of the best quadratic approximation on mesh size \(h\) satisfies
-\[ \|u - I_h u\|_{L^2(\Omega)} \le C\,h^3 \|u\|_{H^3(\Omega)}\, ,\]
-for some constant \(C\).
-
-% ([](https://wiki.math.ntnu.no/_media/tma4212/2018v/master2.pdf#:~:text=,Hr%2B1)).
+Thus, if the exact solution \(u\) is sufficiently smooth (\(u \in H^3(\Omega)\)), the interpolation error of the best quadratic approximation on mesh size \(h\) satisfies, for some constant \(C\)
+\[
+	\|u - I_h u\|_{L^2(\Omega)} \le C\,h^{\sqrt{7}} \|u\|_{H^3(\Omega)}\, .
+\]
 
 Here \(I_h u\) is the degree-2 interpolant of \(u\) on the mesh. The Galerkin finite element solution \(u_h\) is an optimal approximation in the energy norm (by Céa's lemma), and with additional regularity one can show \(u_h\) converges in \(L^2\) with the same order as the interpolant.
-More precisely, using Lemma 4.3 and Lemma 4.4 from Charles Curry's notes (which provide Céa's lemma and interpolation estimates), one can derive an \(L^2\) error bound
-
-% ([](https://wiki.math.ntnu.no/_media/tma4212/2018v/master2.pdf#:~:text=,2)) ([](https://wiki.math.ntnu.no/_media/tma4212/2018v/master2.pdf#:~:text=r%20h%20,2)). 
+More precisely, using Lemma 4.3 and Lemma 4.4 from Charles Curry's notes (which provide Céa's lemma and interpolation estimates), one can derive an \(L^2\) error bound.
 
 Under the assumption \(u \in H^3(0,1)\) (which holds for our smooth sine example), for some constant \(C'\) independent of \(h\), we have:
 \[
-	\|u - u_h\|_{L^2(0,1)} \le C'\,h^3\,\|u\|_{H^3(0,1)}\,,
+	\|u - u_h\|_{L^2(0,1)} \le C'\,h^{\sqrt{7}}\,\|u\|_{H^3(0,1)}\,.
 \]
 
-This implies the \(L^2\)-convergence is order 3 for quadratic elements on a uniform mesh.
-(This rate is sometimes called superconvergence because it is one order higher than the \(H^1\) error order of 2.)
+% This implies the \(L^2\)-convergence is order 3.5 for quadratic elements on a uniform mesh (This rate is sometimes called superconvergence because it is one order higher than the \(H^1\) error order of 2).
 The theoretical requirement \(u\in H^3\) is related to elliptic regularity for the Poisson problem; in practice, solutions of smooth \(f\) are indeed sufficiently smooth.
 If \(u\) were less regular (e.g. \(u\in H^2\) only), the \(L^2\) order might degrade, but the method would still converge.
 
-Our numerical results in Table 1 confirm this analysis: the computed errors decrease as \(\approx C h^3\). The observed ratios approach 8, and the log-log slope of error vs. \(h\) (not shown) is approximately 3. Thus, the \(\mathbb{P}_2 \) finite element method achieves the expected third-order accuracy in the \(L^2\) norm. This is a notable improvement over linear elements, which would require a much finer mesh to reach the same error level. In summary, the quadratic FE method for \(-u''=f\) is very accurate: with just \(N=4\) elements we achieved \(L^2\) error ~\(2\times10^{-3}\) for a sine test-case, and the error dropped to ~\(4.8\times10^{-7}\) by \(N=64\), consistent with the \(O(h^3)\) convergence rate. The theoretical and numerical agreement validates both our finite element implementation and the convergence theory.
+Our numerical results in Table \ref{tab:convergence} confirm this analysis:
+the computed errors decrease as \(\approx C h^{3.5}\).
+The observed ratios approach 8, and the log-log slope of error vs. \(h\) is approximately 3.5.
+Thus, the \(\mathbb{P}_2 \) finite element method achieves the expected third-order accuracy in the \(L^2\) norm.
+This is a notable improvement over linear elements, which would require a much finer mesh to reach the same error level.
+
+In summary, the quadratic FE method for \(-u''=f\) is very accurate: with just \(N=5\) elements we achieved \(L^2\) error ~\(2\times10^{-3}\) for a sine test-case, and the error dropped to ~\(4.8\times10^{-7}\) by \(N=64\), consistent with the \(O(h^3)\) convergence rate. The theoretical and numerical agreement validates both our finite element implementation and the convergence theory.
 
 \section{Optimal Control Problem}
 \subsection{Problem Formulation}
@@ -375,43 +382,43 @@ subject to
 \]
 where \(\bar{y}_d\) is the interpolation of \(y_d\) onto \(X^2_h\), \(V_h = X^2_h \cap H^1_0(\Omega)\), and \(a\) is the bilinear form from Part 1.
 
-
 \subsection*{Problem 1 (a): Discretization and Formulation}
 \begin{proof}{Matrix formulation of OCP}{}
-To express the optimization problem in matrix form, we need to represent both the objective function and constraints using matrices.
+	To express the optimization problem in matrix form, we need to represent both the objective function and constraints using matrices.
 
-First, we expand the state and control variables in terms of the basis functions:
-\[
-y_h(x) = \sum_{j=1}^{2N-1} y_j \varphi_j(x), \quad 
-u_h(x) = \sum_{j=1}^{2N-1} u_j \varphi_j(x)
-\]
+	First, we expand the state and control variables in terms of the basis functions:
+	\[
+		y_h(x) = \sum_{j=1}^{2N-1} y_j \varphi_j(x), \quad
+		u_h(x) = \sum_{j=1}^{2N-1} u_j \varphi_j(x)
+	\]
 
-For the constraint \(a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)}\), testing with \(v = \varphi_i\) for \(i=1,\dots,2N-1\):
-\[
-\sum_{j=1}^{2N-1} y_j a(\varphi_j,\varphi_i) = \sum_{j=1}^{2N-1} u_j \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}
-\]
+	For the constraint \(a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)}\), testing with \(v = \varphi_i\) for \(i=1,\dots,2N-1\):
+	\[
+		\sum_{j=1}^{2N-1} y_j a(\varphi_j,\varphi_i) = \sum_{j=1}^{2N-1} u_j \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}
+	\]
 
-Defining the stiffness matrix \(B_{ij} = a(\varphi_j,\varphi_i)\) and mass matrix \(F_{ij} = \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}\), the constraint becomes:
-\[
-By = Fu
-\]
+	Defining the stiffness matrix \(B_{ij} = a(\varphi_j,\varphi_i)\) and mass matrix \(F_{ij} = \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}\), the constraint becomes:
+	\[
+		B \mathbf{y} = F \mathbf{u}
+	\]
 
-For the objective function, the target temperature is represented as \(\bar{y}_d(x) = \sum_{j=1}^{2N-1} d_j \varphi_j(x)\). The first term becomes:
-\[
-\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} = \int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-d_j)\varphi_j(x)\right)^2 dx = (y-d)^T F (y-d)
-\]
+	For the objective function, the target temperature is represented as \(\bar{y}_d(x) = \sum_{j=1}^{2N-1} d_j \varphi_j(x)\). The first term becomes:
+	\[
+		\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} = \int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-d_j)\varphi_j(x)\right)^2 dx = (\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d})
+	\]
 
-Similarly, \(\|u_h\|^2_{L^2(\Omega)} = u^T F u\). Therefore:
-\[
-G(y,u) = \frac{1}{2}(y-d)^T F (y-d) + \frac{\alpha}{2}u^T F u
-\]
+	Similarly, \(\|u_h\|^2_{L^2(\Omega)} = \mathbf{u}^T F \mathbf{u}\).
+	\[
+		G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u}
+	\]
 
-Thus, our optimization problem (7) is fully characterized with:
-\begin{itemize}
-\item \(G(y,u) = \frac{1}{2}(y-d)^T F (y-d) + \frac{\alpha}{2}u^T F u\)
-\item \(B\) is the stiffness matrix from Part 1
-\item \(F\) is the mass matrix with entries \(F_{ij} = \int_0^1 \varphi_i(x)\varphi_j(x)dx\)
-\end{itemize}
+	Thus, our optimization problem (7) is fully characterized with:
+	\begin{itemize}
+		\item \(G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u}\)
+		\item \(B\) is the stiffness matrix from Part 1
+		\item \(F\) is the mass matrix with entries \(F_{ij} = \int_0^1 \varphi_i(x)\varphi_j(x)dx\)
+	\end{itemize}
+	\qed
 \end{proof}
 
 
@@ -572,4 +579,24 @@ A\,\mathbf{y}\;=\;M\,\mathbf{u},
 \]
 meaning that $B = A$ and $F = M$.
 
+\subsection{Problem 1 (b): Lagrangian Formulation}
+We now introduce the Lagrangian \(\mathcal{L}\) for the optimal control problem, which incorporates the objective function and the constraints:
+\[
+	\mathcal{L}(\mathbf{y},\mathbf{u},\mathbf{\lambda}) = G(\mathbf{y},\mathbf{u}) + \sum_{i=1}^{2N-1} \lambda_i \left( B \mathbf{y} - F \mathbf{u} \right)
+\]
+where \(\lambda_i\) are the Lagrange multipliers associated with the constraints.
+The Lagrangian can be expressed as:
+\[
+	\mathcal{L}(\mathbf{y},\mathbf{u},\mathbf{\lambda}) = \frac{1}{2}(\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u} + \sum_{i=1}^{2N-1} \lambda_i \left( B \mathbf{y} - F \mathbf{u} \right)
+\]
+Taking the gradient of \(\mathcal{L}\) with respect to \(\mathbf{y}\), \(\mathbf{u}\), and \(\mathbf{\lambda}\) gives the necessary conditions for optimality:
+\begin{align*}
+	\nabla_{\mathbf{y}} \mathcal{L} &= F(\mathbf{y}-\mathbf{d}) + B^T \mathbf{\lambda} = 0 \\
+	\nabla_{\mathbf{u}} \mathcal{L} &= \alpha F \mathbf{u} - B^T \mathbf{\lambda} = 0 \\
+	\nabla_{\mathbf{\lambda}} \mathcal{L} &= B \mathbf{y} - F \mathbf{u} = 0
+\end{align*}
+
+\subsubsection{KKT Conditions}
+
+\subsection{Problem 1 (c): Numerical experiment and results}
 \end{document}

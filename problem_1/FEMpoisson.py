@@ -57,21 +57,31 @@ class FEMPoissonSolver:
         self.u = np.zeros(self.N)
         self.u[self.free] = self.u_free
         return self.u
-
-    def L2_error(self):
-        error_sq = 0
-        delta = self.h / 3.0
-        for i in range(self.N):
-            err = self.exact(self.nodes[i]) - self.u[i]
-            weight = 0.5 if (i == 0 or i == self.N - 1) else 1.0
-            error_sq += weight * err**2
-        return np.sqrt(error_sq * delta)
-    def plot_solution(self, fine_mesh=200, name='test'):
-        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
-        
+    
+    def get_u_exact(self, fine_mesh=200):
         x_fine = np.linspace(0, 1, fine_mesh)
-        u_exact = np.array([self.exact(x) for x in x_fine])
-        # Plot exact solution and FEM solution
+        return self.exact(x_fine)
+    
+    def L2_error(self):
+        u_exact = self.exact(self.nodes)
+        l2_error = np.linalg.norm(self.u - u_exact, 2)
+        return l2_error
+    
+    def H1_error(self):
+        h = self.h
+        u_exact = self.exact(self.nodes)
+        u_exact_grad = np.gradient(u_exact, h)
+        u_grad = np.gradient(self.u, h)
+        l2_error = np.linalg.norm(self.u - u_exact, 2)
+        grad_error = np.linalg.norm(u_grad - u_exact_grad, 2)
+        return np.sqrt(l2_error**2 + grad_error**2)
+
+    def plot_solution(self, fine_mesh=200, name='test'):
+        u_exact = self.get_u_exact(fine_mesh)
+        x_fine = np.linspace(0, 1, fine_mesh)
+        
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+
         ax.plot(x_fine, u_exact, 'r-', linewidth=2, label='Exact Solution')
         ax.plot(self.nodes, self.u, 'bo-', markersize=5, label='FEM Solution')
         ax.set_title('FEM vs Exact Solution')
@@ -81,7 +91,7 @@ class FEMPoissonSolver:
         ax.grid(True)
         
         plt.tight_layout()
-        plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
+        # plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
         plt.show()
         
     def plot(self, fine_mesh=200, name='test'):
@@ -124,7 +134,7 @@ class FEMPoissonSolver:
         axs[1].set_title('Convergence Plot')
         
         plt.tight_layout()
-        plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
+        # plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
         plt.show()
         
     def plot_stiffness_matrix_and_load_vector(self, name='test'):
@@ -149,42 +159,84 @@ class FEMPoissonSolver:
         ax[1].set_xlabel('Node Index $i = \\theta(k, j)$')
         ax[1].set_ylabel('Value')
         plt.tight_layout()
-        plt.savefig(f'figures/stiffness_matrix_and_load_vector_{self.M}_{name}.png')
+        # plt.savefig(f'figures/stiffness_matrix_and_load_vector_{self.M}_{name}.png')
         plt.show()
         
     def convergence_test(self):
-        M_vals = [5, 10, 20, 40, 80, 160]
-        errors = []
+        M_vals = [2, 4, 8, 16, 32, 64, 128]
+        errors_L2 = []
+        errors_H1 = []
         hs = []
          # Compute L2 error for each M
         for M in M_vals:
             temp_solver = FEMPoissonSolver(M, self.f, self.exact)
             temp_solver.assemble()
             temp_solver.solve()
-            errors.append(temp_solver.L2_error())
+        
+            errors_L2.append(temp_solver.L2_error())
+            errors_H1.append(temp_solver.H1_error())
             hs.append(1.0/M)
         
         hs = np.array(hs)
-        errors = np.array(errors)
-        p = np.polyfit(np.log(hs), np.log(errors), 1)
-        return p[0], errors, hs
+        errors_L2 = np.array(errors_L2)
+        errors_H1 = np.array(errors_H1)
+        p_L2 = np.polyfit(np.log(hs), np.log(errors_L2), 1)[0]
+        p_H1 = np.polyfit(np.log(hs), np.log(errors_H1), 1)[0]
+        return hs, (p_L2, p_H1), (errors_L2, errors_H1)
     
+    def print_convergence_table(self):
+        hs, (p_L2, p_H1), (errors_L2, errors_H1) = self.convergence_test()
+        # Print header
+        print(f"{'Convergence Table':^42}")
+        print("-" * 42)
+        print(f"{'M':>6} {'h':>12} {'L2 Error':>12} {'Rate L2':>12} {'H1 Error':>12} {'Rate H1':>12}")
+        print("-" * 42)
+
+        # Print each row
+        for i in range(len(hs)):
+            if i == 0:
+                rate_L2 = '-'
+                rate_H1 = '-'
+            else:
+                rate_L2 = f"{np.log(errors_L2[i-1]/errors_L2[i])/np.log(hs[i-1]/hs[i]):.2f}"
+                rate_H1 = f"{np.log(errors_H1[i-1]/errors_H1[i])/np.log(hs[i-1]/hs[i]):.2f}"
+            print(f"{int(1/hs[i]):>6d} {hs[i]:>12.4e} {errors_L2[i]:>12.4e} {rate_L2:>12} {errors_H1[i]:>12.4e} {rate_H1:>12}")
+        print("-" * 42)
+        print(f"Convergence rates: L2: {p_L2:.2f}, H1: {p_H1:.2f}")
+        print(f"Final L2 error: {errors_L2[-1]:.4e}")
+        print(f"Final H1 error: {errors_H1[-1]:.4e}")
+        print("-" * 42)
+        
     def plot_convergence(self, name='test'):
-        p, errors, hs = self.convergence_test()
+        hs, (p_L2, p_H1), (errors_L2, errors_H1) = self.convergence_test()
         ref_hs = hs/hs[0]
         
         # Plot convergence
-        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
-        ax.loglog(hs, errors, 'bo-', linewidth=2, markersize=8, label=f'$\\|e_h\\|_{{L^2}} = \\mathcal{{O}}(h^{{{p:.2f}}})$')
-        ax.loglog(hs, errors[0]*(ref_hs)**3, 'r--', linewidth=2, label='$\\mathcal{O}(h^3)$')
-        ax.loglog(hs, errors[0]*(ref_hs)**2, 'g--', linewidth=2, label='$\\mathcal{O}(h^2)$')
-        ax.set_xlabel('Mesh size $h$')
-        ax.set_ylabel('$\\|e\\|_{\\mathrm{L}^2}$')
-        ax.grid(True, which='both', ls='--', alpha=0.7)
-        ax.legend()
-        ax.set_title('Convergence Plot')
+        fig, ax = plt.subplots(1,2, figsize=(12, 5), gridspec_kw={'width_ratios': [2, 1]}, dpi=200)
+        ax[0].loglog(hs, errors_L2, 'bo-', linewidth=2, markersize=8, label=f'$\\|e_h\\|_{{L^2}} = \\mathcal{{O}}(h^{{{p_L2:.2f}}})$')
+        ax[0].loglog(hs, errors_H1, 'mo-', linewidth=2, markersize=8, label=f'$\\|e_h\\|_{{H^1}} = \\mathcal{{O}}(h^{{{p_H1:.2f}}})$')
+        ax[0].loglog(hs, errors_L2[0]*(ref_hs)**3, 'r--', linewidth=2, label='$\\mathcal{O}(h^3)$', alpha=0.5)
+        ax[0].loglog(hs, errors_L2[0]*(ref_hs)**2, 'g--', linewidth=2, label='$\\mathcal{O}(h^2)$', alpha=0.5)
+
+        ax[0].set_xlabel('Mesh size $h$')
+        ax[0].set_ylabel('$\\|e\\|_{\\mathrm{L}^2}$ and $\\|e\\|_{\\mathrm{H}^1}$')
+        ax[0].grid(True, which='both', ls='--', alpha=0.7)
+        ax[0].legend()
+        ax[0].set_title('Convergence Plot')
         
+        # Plot errors
+        ax[1].plot(hs, errors_L2, 'bo-', linewidth=2, markersize=8, label='$\\|e_h\\|_{L^2}$')
+        ax[1].plot(hs, errors_H1, 'mo-', linewidth=2, markersize=8, label='$\\|e_h\\|_{H^1}$')
+        ax[1].set_xlabel('Mesh size $h$')
+        ax[1].set_ylabel('Errors')
+        ax[1].grid(True, which='both', ls='--', alpha=0.7)
+        ax[1].legend()
+        ax[1].set_title('Errors Plot')
         plt.tight_layout()
-        plt.savefig(f'figures/convergence_plot_{self.M}_{name}.png')
+        # plt.savefig(f'figures/convergence_{self.M}_{name}.png')
         plt.show()
         
+    
+    def get_exact_solution(self):
+        return np.array([self.exact(x) for x in self.nodes])
+    

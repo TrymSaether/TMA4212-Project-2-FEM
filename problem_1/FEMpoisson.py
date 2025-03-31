@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import integrate
 import matplotlib.pyplot as plt
 import scienceplots
 
@@ -64,19 +65,33 @@ class FEMPoissonSolver:
     
     def L2_error(self):
         u_exact = self.exact(self.nodes)
-        l2_error = np.linalg.norm(self.u - u_exact, 2)
-        return l2_error
+        l2_error = integrate.simpson((self.u - u_exact)**2, self.nodes)
+        return np.sqrt(l2_error)
     
     def H1_error(self):
         h = self.h
         u_exact = self.exact(self.nodes)
         u_exact_grad = np.gradient(u_exact, h)
         u_grad = np.gradient(self.u, h)
-        l2_error = np.linalg.norm(self.u - u_exact, 2)
-        grad_error = np.linalg.norm(u_grad - u_exact_grad, 2)
-        return np.sqrt(l2_error**2 + grad_error**2)
-
-    def plot_solution(self, fine_mesh=200, name='test'):
+        h1_error = integrate.simpson((u_grad - u_exact_grad)**2, self.nodes)
+        h1_error += integrate.simpson((self.u - u_exact)**2, self.nodes)
+        return np.sqrt(h1_error)
+    
+    def Hr_error(self, r):
+        h = self.h
+        u_exact = self.exact(self.nodes)
+        error = integrate.simpson((self.u - u_exact)**2, self.nodes)
+        
+        u_grad = self.u
+        u_exact_grad = u_exact
+        
+        for i in range(r):
+            u_grad = np.gradient(u_grad, h)
+            u_exact_grad = np.gradient(u_exact_grad, h)
+            error += integrate.simpson((u_grad - u_exact_grad)**2, self.nodes)
+        return np.sqrt(error)
+    
+    def plot_solution(self, fine_mesh=200, name='test', savefig=False):
         u_exact = self.get_u_exact(fine_mesh)
         x_fine = np.linspace(0, 1, fine_mesh)
         
@@ -85,16 +100,17 @@ class FEMPoissonSolver:
         ax.plot(x_fine, u_exact, 'r-', linewidth=2, label='Exact Solution')
         ax.plot(self.nodes, self.u, 'bo-', markersize=5, label='FEM Solution')
         ax.set_title('FEM vs Exact Solution')
-        ax.set_xlabel('x')
-        ax.set_ylabel('u(x)')
+        ax.set_xlabel('$x$')
+        ax.set_ylabel('$u(x)$')
         ax.legend()
         ax.grid(True)
         
         plt.tight_layout()
-        # plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
+        if savefig:
+            plt.savefig(f'figures/fem_plot_{name}_M{self.M}.png', dpi=200)
         plt.show()
         
-    def plot(self, fine_mesh=200, name='test'):
+    def plot(self, fine_mesh=200, name='test', savefig=False):
         fig, axs = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={'width_ratios': [2, 1]}, dpi=150)        
         
         x_fine = np.linspace(0, 1, fine_mesh)
@@ -103,12 +119,12 @@ class FEMPoissonSolver:
         axs[0].plot(x_fine, u_exact, 'r-', linewidth=2, label='Exact Solution')
         axs[0].plot(self.nodes, self.u, 'bo-', markersize=5, label='FEM Solution')
         axs[0].set_title('FEM vs Exact Solution')
-        axs[0].set_xlabel('x')
-        axs[0].set_ylabel('u(x)')
+        axs[0].set_xlabel('$x$')
+        axs[0].set_ylabel('$u(x)$')
         axs[0].legend()
         axs[0].grid(True)
         
-        M_vals = [10, 20, 40, 80]
+        M_vals = [10, 20, 40, 80, 160]
         errors = []
         hs = []
         for M in M_vals:
@@ -134,10 +150,11 @@ class FEMPoissonSolver:
         axs[1].set_title('Convergence Plot')
         
         plt.tight_layout()
-        plt.savefig(f'figures/fem_solution_{self.M}_{name}.png')
+        if savefig:
+            plt.savefig(f'figures/fem_plot_convergence_{name}_M{self.M}.png', dpi=200)
         plt.show()
         
-    def plot_stiffness_matrix_and_load_vector(self, name='test'):
+    def plot_stiffness_matrix_and_load_vector(self, name='test', savefig=False):
         fig, ax = plt.subplots(1, 2, figsize=(12, 5), dpi=200)
         
         # Plot stiffness matrix
@@ -153,13 +170,12 @@ class FEMPoissonSolver:
         
         # Plot load vector
         bax = ax[1].bar(np.arange(self.N), self.F, color='blue', alpha=0.7)
-        ax[1].set_ylim(bottom=0)
-        ax[1].set_xlim(left=0, right=self.N)
         ax[1].set_title('Load Vector $\\mathbf{F}$')
         ax[1].set_xlabel('Node Index $i = \\theta(k, j)$')
         ax[1].set_ylabel('Value')
         plt.tight_layout()
-        # plt.savefig(f'figures/stiffness_matrix_and_load_vector_{self.M}_{name}.png')
+        if savefig:
+            plt.savefig(f'figures/stiffness_load_{name}_M{self.M}.png', dpi=200)
         plt.show()
         
     def convergence_test(self):
@@ -226,7 +242,7 @@ class FEMPoissonSolver:
         print(f"Final errors - L2: {errors_L2[-1]:.2e}, H1: {errors_H1[-1]:.2e}")
         print("=" * width + "\n")
         
-    def plot_convergence(self, name='test'):
+    def plot_convergence(self, name='test', savefig=False):
         hs, (p_L2, p_H1), (errors_L2, errors_H1) = self.convergence_test()
         ref_hs = hs/hs[0]
         
@@ -252,7 +268,8 @@ class FEMPoissonSolver:
         ax[1].legend()
         ax[1].set_title('Errors Plot')
         plt.tight_layout()
-        # plt.savefig(f'figures/convergence_{self.M}_{name}.png')
+        if savefig:
+            plt.savefig(f'figures/convergence_{name}_M{self.M}.png', dpi=200)
         plt.show()
         
     

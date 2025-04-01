@@ -91,10 +91,6 @@ class FEMSolver:
         return csr_matrix(A), b, self.nodes[self.int_idx]
 
     def solve_poisson(self, f_func):
-        """
-        Solve the Poisson problem -u'' = f with homogeneous Dirichlet BC.
-        Returns: (x, u) with x the interior nodes and u the FEM solution.
-        """
         A, b, x = self.assemble_system(f_func, use_mass=False)
         u = spsolve(A, b)
         return x, u
@@ -163,10 +159,6 @@ def plot_opt_control_multi(alphas, n_vals, yd, fine_mesh=200, savefig=False, nam
     for alpha in alphas:
         x_int, y_int, u_int = solver_fine.solve_opt_control(alpha, yd)
         axs[1].plot(x_int, u_int, marker='o', linestyle='-', label=f'$\\alpha = {alpha}$')
-        u_full = np.zeros_like(solver_fine.nodes)
-        u_full[1:-1] = u_int
-        axs[1].plot(solver_fine.nodes, u_full, marker='o', linestyle='-')
-  
     axs[1].set_title('Control Solutions')
     axs[1].set_xlabel('$x$')
     axs[1].set_ylabel('Control $u(x)$')

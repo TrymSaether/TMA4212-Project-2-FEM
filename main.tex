@@ -352,19 +352,19 @@ matches the exact solution.
 	\centering
 	\begin{tabular}{|c|c|c|c|c|c|c|c|}
 		\hline
-		\rowcolor{blue!25!white} \multirow{1}{*}{$M$} & \multirow{1}{*}{$h$} & \multicolumn{3}{c|}{$L^2$ Norm} & \multicolumn{3}{c|}{$H^1$ Norm}                                   \\
+		\rowcolor{blue!25!white} \textbf{M} & \textbf{h} & \multicolumn{3}{c|}{$L^2$ Norm} & \multicolumn{3}{c|}{$H^1$ Norm}                                   \\
 		\cline{3-8}
-		\rowcolor{blue!25!white}                      &                      & Error                           & Rate                            & Ratio & Error    & Rate & Ratio \\
+		\rowcolor{blue!25!white}            &            & Error                           & Rate                            & Ratio & Error    & Rate & Ratio \\
 		\hline
-		2                                             & 5.00e-01             & 6.71e-03                        & --                              & --    & 1.08e-02 & --   & --    \\
+		$2$                                 & $0.500$    & 6.71e-03                        & --                              & --    & 1.08e-02 & --   & --    \\
 		\rowcolor{blue!5!white}
-		4                                             & 2.50e-01             & 3.89e-04                        & 4.11                            & 17.25 & 6.53e-04 & 4.04 & 16.49 \\
-		8                                             & 1.25e-01             & 2.39e-05                        & 4.03                            & 16.29 & 4.05e-05 & 4.01 & 16.11 \\
+		$4$                                 & $0.250$    & 3.89e-04                        & 4.11                            & 17.25 & 6.53e-04 & 4.04 & 16.49 \\
+		$8$                                 & $0.125$    & 2.39e-05                        & 4.03                            & 16.29 & 4.05e-05 & 4.01 & 16.11 \\
 		\rowcolor{blue!5!white}
-		16                                            & 6.25e-02             & 1.48e-06                        & 4.01                            & 16.07 & 2.53e-06 & 4.00 & 16.03 \\
-		32                                            & 3.12e-02             & 9.27e-08                        & 4.00                            & 16.02 & 1.58e-07 & 4.00 & 16.01 \\
+		$16$                                & $0.063$    & 1.48e-06                        & 4.01                            & 16.07 & 2.53e-06 & 4.00 & 16.03 \\
+		$32$                                & $0.031$    & 9.27e-08                        & 4.00                            & 16.02 & 1.58e-07 & 4.00 & 16.01 \\
 		\rowcolor{blue!5!white}
-		64                                            & 1.56e-02             & 5.79e-09                        & 4.00                            & 16.00 & 9.87e-09 & 4.00 & 16.00 \\
+		$64$                                & $0.016$    & 5.79e-09                        & 4.00                            & 16.00 & 9.87e-09 & 4.00 & 16.00 \\
 		\hline
 	\end{tabular}
 	\caption{$L^2$ and $H^1$-norm errors for the sine example using quadratic elements. The consistent error reduction by a factor of approximately 16 when $h$ is halved confirms fourth-order convergence in both norms. Overall convergence rates: $L^2 \approx 4.02$, $H^1 \approx 4.01$. Final error at finest resolution: $L^2 = 2.12 \times 10^{-11}$, $H^1 = 3.87 \times 10^{-11}$.}
@@ -391,7 +391,6 @@ Note that since the exact solution is quadratic means our P2 elements should rep
 With Simpson's rule integration, $u_h(x)$ theoretically matches $u(x)$ exactly.
 In practice, we observe slight errors on finer meshes due to floating-point roundoff in the larger linear systems.
 
-
 \subsection{Theoretical Error Analysis and Convergence Rate}
 Table~\ref{tab:convergence_fancy} illustrates that our numerical results match
 standard finite element theory: for degree-$r$ elements, the $H^1$-norm error is
@@ -399,7 +398,7 @@ $\mathcal{O}(h^r)$ and the $L^2$-norm error is $\mathcal{O}(h^{r+1})$, assuming
 sufficient smoothness.
 
 \begin{align*}
-	\|v - v_h^r\|_{H^1} & \le C\,h^{r}\,\|v\|_{H^{r+1}(\Omega)} \\
+	\|v - v_h^r\|_{H^1} & \le C\,h^{r}\,\|v\|_{H^{r+1}(\Omega)}    \\
 	\|v - v_h^r\|_{L^2} & \le C\,h^{r+1}\,\|v\|_{H^{r+1}(\Omega)}.
 \end{align*}
 
@@ -409,12 +408,12 @@ of size $h$ satisfies
 	\|u - I_h u\|_{L^2(\Omega)} \le C\,h^{3}\,\|u\|_{H^3(\Omega)}.
 \]
 By Céa's lemma, $u_h$ converges at a similar rate\cite{Curry2018}.
-We observe superconvergence of $\mathcal{O}(h^4)$ in both the $L^2$ and $H^1$ norms, due to the smoothness of the exact solution. 
+We observe superconvergence of $\mathcal{O}(h^4)$ in both the $L^2$ and $H^1$ norms, due to the smoothness of the exact solution.
 For a uniform mesh and smooth solution $u$, theory predicts convergence rates of $\mathcal{O}(h^{r+1})$ in the $L^2$ norm and $\mathcal{O}(h^r)$ in the $H^1$ norm.
 
 The ratios in Table~\ref{tab:convergence_fancy} confirm these rates - halving the mesh size reduces errors by a factor of approximately 16, consistent with fourth-order convergence. At the finest resolution ($N=64$), we achieve very high accuracy with $L^2$ error of $2.12 \times 10^{-11}$ and $H^1$ error of $3.87 \times 10^{-11}$.
 
-For the sine example, the $L^2$ error decreases from $\mathcal{O}(10^{-3})$ with $N=5$ elements to $\mathcal{O}(10^{-7})$ at $N=64$, matching the theoretical $\mathcal{O}(h^4)$ convergence. 
+For the sine example, the $L^2$ error decreases from $\mathcal{O}(10^{-3})$ with $N=5$ elements to $\mathcal{O}(10^{-7})$ at $N=64$, matching the theoretical $\mathcal{O}(h^4)$ convergence.
 Since the $H^1$ error is bounded by the $L^2$ error, we expect it to show similar behavior.
 
 The $H^1$ error decreases from $\mathcal{O}(10^{-2})$ with $N=5$ elements to $\mathcal{O}(10^{-6})$ at $N=64$, confirming the expected convergence rate of $\mathcal{O}(h^4)$.
@@ -440,9 +439,9 @@ The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\i
 
 We assembled $K$ and $M$ using our FEM routines from Part 1. The optimality system for this quadratic OCP can be derived by setting the gradient of the Lagrangian $\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T(Ky - Mu)$ to zero. This yields the Karush–Kuhn–Tucker (KKT) conditions:
 \begin{align*}
-	M(y-Y_d) - K\lambda &= 0,\\
-	\alpha\,Mu + M\lambda &= 0,\\
-	Ky-Mu &= 0,
+	M(y-Y_d) - K\lambda   & = 0, \\
+	\alpha\,Mu + M\lambda & = 0, \\
+	Ky-Mu                 & = 0,
 \end{align*}
 where $\lambda$ is the vector of Lagrange multipliers (which corresponds to the adjoint state in optimal control). Eliminating $\lambda$, we obtain a symmetric saddle-point linear system for the unknown coefficients $y$ and $u$:
 \[
@@ -472,10 +471,10 @@ We solve this $2M \times 2M$ system (of size $2(2N-1)$) using a sparse direct so
 
 For each case, we solved the OCP for $\alpha = 10^{-2},\,10^{-4},\,10^{-6}$ (covering relatively large to very small control cost). We plot the resulting optimal state $y_h(x)$ and control $u_h(x)$, along with the target $y_d(x)$ for reference. Below we summarize the observed behavior:
 
-\subsubsection*{Case 1 (Smooth $y_d \in H^1_0$)} 
-For a large control cost ($\alpha=10^{-2}$), the optimizer prefers to keep $u_h$ small, thus $y_h$ ends up far from $y_d$. In our results, with $\alpha=0.01$ the optimal control was nearly zero everywhere, and accordingly $y_h(x)$ was very close to 0 (the homogeneous solution of $-y''=0$ with the given BCs). 
-This makes sense: when control is expensive, the best strategy is to do almost nothing ($u\approx0$), accepting a large mismatch between $y$ and $y_d$. 
-As $\alpha$ decreases, the optimal state $y_h$ moves closer to the target curve. For $\alpha=10^{-4}$, we found $y_h(x)$ already tracks $0.5x(1-x)$ quite well, and for $\alpha=10^{-6}$ the agreement is almost perfect (the curves of $y_h$ and $y_d$ nearly overlap). In fact, as $\alpha\to 0$, we expect $y_h\to y_d$ exactly and $u_h$ approaches the exact forcing needed to achieve that state. Here $y_d(x)$ is an attainable steady state of the PDE ($y_d$ itself satisfies $-y_d'' = 1$), so the optimal control for very small $\alpha$ should approach $u(x)\approx 1$. The computed $u_h(x)$ for $\alpha=10^{-6}$ was indeed essentially the constant 1 (with minor numerical oscillations $<10^{-3}$). Thus, for an $H^1_0$-compatible target, a small control penalty yields an accurate state ($y_h \approx y_d$) at the cost of a larger control norm (here $u_h\approx 1$ in magnitude). Conversely, a large $\alpha$ yields $u_h\approx 0$ and $y_h$ far from $y_d$. This trade-off aligns exactly with expectations for the weighting parameter $\alpha$. 
+\subsubsection*{Case 1 (Smooth $y_d \in H^1_0$)}
+For a large control cost ($\alpha=10^{-2}$), the optimizer prefers to keep $u_h$ small, thus $y_h$ ends up far from $y_d$. In our results, with $\alpha=0.01$ the optimal control was nearly zero everywhere, and accordingly $y_h(x)$ was very close to 0 (the homogeneous solution of $-y''=0$ with the given BCs).
+This makes sense: when control is expensive, the best strategy is to do almost nothing ($u\approx0$), accepting a large mismatch between $y$ and $y_d$.
+As $\alpha$ decreases, the optimal state $y_h$ moves closer to the target curve. For $\alpha=10^{-4}$, we found $y_h(x)$ already tracks $0.5x(1-x)$ quite well, and for $\alpha=10^{-6}$ the agreement is almost perfect (the curves of $y_h$ and $y_d$ nearly overlap). In fact, as $\alpha\to 0$, we expect $y_h\to y_d$ exactly and $u_h$ approaches the exact forcing needed to achieve that state. Here $y_d(x)$ is an attainable steady state of the PDE ($y_d$ itself satisfies $-y_d'' = 1$), so the optimal control for very small $\alpha$ should approach $u(x)\approx 1$. The computed $u_h(x)$ for $\alpha=10^{-6}$ was indeed essentially the constant 1 (with minor numerical oscillations $<10^{-3}$). Thus, for an $H^1_0$-compatible target, a small control penalty yields an accurate state ($y_h \approx y_d$) at the cost of a larger control norm (here $u_h\approx 1$ in magnitude). Conversely, a large $\alpha$ yields $u_h\approx 0$ and $y_h$ far from $y_d$. This trade-off aligns exactly with expectations for the weighting parameter $\alpha$.
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 1.png}
@@ -483,10 +482,12 @@ As $\alpha$ decreases, the optimal state $y_h$ moves closer to the target curve.
 	\label{fig:opt_control_case1}
 \end{figure}
 
-\subsubsection*{Case 2 (Constant $y_d\notin H^1_0$)} 
-This scenario cannot achieve $y(x)=y_d(x)=1$ at the boundaries because the state $y$ must vanish at $x=0,1$. For large $\alpha$ (e.g. $10^{-2}$), again the optimal $u_h$ was almost zero, so $y_h\approx 0$ across the domain -- essentially ignoring the target to avoid control cost. For smaller $\alpha$, the solver increases $u_h$ to push $y_h$ upward toward 1 in the interior. We observed that for $\alpha=10^{-4}$, $y_h(x)$ rose to $\approx 0.6$ in the middle of the domain, and for $\alpha=10^{-6}$, $y_h(x)$ came very close to 1 over a broad interior region (while of course still dropping to 0 at the ends due to the boundary conditions). The optimal control for $\alpha=10^{-6}$ became quite large near the boundaries -- peaking near $x=0$ and $x=1$ -- effectively to ``lift'' the value of $y$ in the interior. 
+\subsubsection*{Case 2 (Constant $y_d\notin H^1_0$)}
+This scenario cannot achieve $y(x)=y_d(x)=1$ at the boundaries because the state $y$ must vanish at $x=0,1$. For large $\alpha$ (e.g. $10^{-2}$), again the optimal $u_h$ was almost zero, so $y_h\approx 0$ across the domain -- essentially ignoring the target to avoid control cost. For smaller $\alpha$, the solver increases $u_h$ to push $y_h$ upward toward 1 in the interior. We observed that for $\alpha=10^{-4}$, $y_h(x)$ rose to $\approx 0.6$ in the middle of the domain, and for $\alpha=10^{-6}$, $y_h(x)$ came very close to 1 over a broad interior region (while of course still dropping to 0 at the ends due to the boundary conditions). The optimal control for $\alpha=10^{-6}$ became quite large near the boundaries -- peaking near $x=0$ and $x=1$ -- effectively to ``lift'' the value of $y$ in the interior.
 
-Intuitively, when $y_d$ is constant 1, the best the system can do (for small $\alpha$) is apply strong heat sources near the ends to counteract the boundary decay, creating a state that is near 1 on $(0,1)$ except for boundary layers. This was reflected in $u_h$ for $\alpha=10^{-6}$, which had sharp spikes at the domain ends. The magnitude of these end spikes grows as $\alpha$ decreases (for $\alpha=10^{-4}$ they were milder). Meanwhile, $u_h$ in the mid-domain was used to fine-tune $y_h\approx 1$. This case highlights the effect of a target not satisfying the BC: as $\alpha\to0$, the interior of the domain approaches the target value (here $\approx 1$), but $y_h$ must transition to 0 at the boundaries. The optimizer concentrates control effort to facilitate this transition. We also note that because $y_d$ is smooth (except for the discontinuity at the boundary jump), $y_h$ remained smooth; however, $u_h$ had to become large near $x=0,1$. This is consistent with the theoretical observation that if $y_d\notin H^1_0$, the optimal state cannot equal $y_d$ even as $\alpha\to0$, and the control may blow up trying to reduce the $L^2$ error. In our discrete setting, $\alpha=10^{-6}$ already produced very large boundary control values (within numerical stability limits).
+Intuitively, when $y_d$ is constant 1, the best the system can do (for small $\alpha$) is apply strong heat sources near the ends to counteract the boundary decay, creating a state that is near 1 on $(0,1)$ except for boundary layers.
+This was reflected in $u_h$ for $\alpha=10^{-6}$, which had sharp spikes at the domain ends. The magnitude of these end spikes grows as $\alpha$ decreases (for $\alpha=10^{-4}$ they were milder).
+Meanwhile, $u_h$ in the mid-domain was used to fine-tune $y_h\approx 1$. This case highlights the effect of a target not satisfying the BC: as $\alpha\to0$, the interior of the domain approaches the target value (here $\approx 1$), but $y_h$ must transition to 0 at the boundaries. The optimizer concentrates control effort to facilitate this transition. We also note that because $y_d$ is smooth (except for the discontinuity at the boundary jump), $y_h$ remained smooth; however, $u_h$ had to become large near $x=0,1$. This is consistent with the theoretical observation that if $y_d\notin H^1_0$, the optimal state cannot equal $y_d$ even as $\alpha\to0$, and the control may blow up trying to reduce the $L^2$ error. In our discrete setting, $\alpha=10^{-6}$ already produced very large boundary control values (within numerical stability limits).
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 2.png}
@@ -494,7 +495,7 @@ Intuitively, when $y_d$ is constant 1, the best the system can do (for small $\a
 	\label{fig:opt_control_case2}
 \end{figure}
 
-\subsubsection*{Case 3 (Discontinuous $y_d$ step)} 
+\subsubsection*{Case 3 (Discontinuous $y_d$ step)}
 This is the most challenging target, since $y_d$ is not only not in $H^1_0$, it has an interior jump. For large $\alpha$ again $u_h\approx0$ and $y_h\approx0$. For moderate $\alpha$ ($10^{-4}$), $y_h$ started to approximate the step: e.g. at $\alpha=10^{-4}$, $y_h(x)$ was about 0.8 in the plateau region $[0.25,0.75]$ and dropped to near 0 outside that interval. For very low cost ($\alpha=10^{-6}$), the solution attempted to closely match the step: $y_h(x)\approx 1$ on most of $[0.25,0.75]$ and $\approx 0$ outside. However, $y_h$ must remain continuous, so it cannot jump abruptly at $x=0.25$ and $0.75$. Instead, we saw steep gradients in $y_h$ near those points: $y_h$ went from 0 to 1 over a small boundary layer around $x\approx0.25$, and similarly dropped back to 0 around $x\approx0.75$. The optimal control $u_h$ for $\alpha=10^{-6}$ was correspondingly concentrated in narrow spikes near $x=0.25$ and $x=0.75$. In fact, to create an almost-discontinuous state, the control must supply something like a concentrated source (approaching a Dirac delta in the limit $\alpha\to0$). Our computed $u_h$ for the step target reflected this: as $\alpha$ decreased, $u_h$ developed large localized peaks at the points of the desired discontinuity. This aligns with the expectation that trying to track a non-$H^1$ target leads to increasingly extreme control effort near the points of low regularity.
 
 Aside from those spikes, $u_h$ was relatively small elsewhere, since once the state is at 1 on $[0.25,0.75]$, it only needs to counter diffusion to maintain that plateau. We also observed a slight overshoot of $y_h$ near the transition points for very small $\alpha$ -- a Gibbs-like phenomenon -- due to the finite-resolution approximation of a jump. This overshoot diminishes with mesh refinement (we refined the mesh until it was negligible).
@@ -515,7 +516,7 @@ In summary, if $y_d$ is smooth and compatible with the PDE constraints, the OCP 
 
 % Visual summary: [Plots were generated for each case showing the optimal state and control for $\alpha=10^{-2}, 10^{-4}, 10^{-6}$.] In all cases, as the control weight $\alpha$ decreases, the $y_h$ curves move closer to the target $y_d(x)$ and the $u_h$ curves grow in magnitude. For large $\alpha$, $y_h$ is essentially flat (near 0) and $u_h\approx 0$. For small $\alpha$, $y_h$ aligns with $y_d$ except where the PDE constraints force deviations (e.g. near boundaries or discontinuities), and $u_h$ is significant -- often peaking where $y_h$ needs the most ``force'' to follow $y_d$. These results are consistent with physical intuition: if it is very costly to apply control, the system mostly relies on the natural state (which is 0 here due to homogeneous BCs and no forcing), whereas if control is cheap, the system can be driven to closely track the desired profile.
 
-\paragraph{Conclusion:} 
+\paragraph{Conclusion:}
 The FEM-based solver successfully handled the optimal control problem, producing solutions that satisfy the first-order optimality conditions. The numerical experiments validated the expected convergence rates for the forward problem and illustrated the influence of the control cost $\alpha$ and target function $y_d$. We saw that our implementation can capture the qualitative features of optimal states and controls in different regimes. Especially, the transitions from minimal control to aggressive control regimes (as $\alpha$ varies) and the effect of target regularity (smooth vs. discontinuous $y_d$) were clearly observed, matching theoretical expectations. Overall, the results demonstrate consistency between the discrete solutions and the underlying analysis of the OCP, and they highlight how the finite element approach provides a flexible framework to solve and explore such PDE-constrained optimization problems.
 
 

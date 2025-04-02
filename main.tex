@@ -552,13 +552,13 @@ First, we expand the objective function (target temperature), state and control 
 \]
 Expanding each term in the objective function:
 \begin{align*}
-	\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} & = \int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-d_j)\varphi_j(x)\right)^2 dx = (\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d}) \\
+	\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} & = \int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-(\bar{y}_d)_j)\varphi_j(x)\right)^2 dx = (\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) \\
 	\|u_h\|^2_{L^2(\Omega)}             & = \int_0^1 \left(\sum_{j=1}^{2N-1} u_j \varphi_j(x)\right)^2 dx = \mathbf{u}^T F \mathbf{u}
 \end{align*}
 
 Thus, the objective function can be expressed as:
 \[
-	G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u}
+	G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u}
 \]
 For the constraint \(a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)}\), testing with \(v = \varphi_i\) for \(i=1,\dots,2N-1\):
 \[
@@ -572,18 +572,18 @@ Defining the stiffness matrix \(B_{ij} = a(\varphi_j,\varphi_i)\) and mass matri
 
 We now introduce the Lagrangian for the OCP:
 \[
-	\mathcal{L}(\mathbf{y},\mathbf{u},\symbf{\lambda}) = \frac{1}{2}(\mathbf{y}-\mathbf{d})^T F (\mathbf{y}-\mathbf{d}) + \frac{\alpha}{2}\, \mathbf{u}^T F \mathbf{u} + \symbf{\lambda}^T (B\,\mathbf{y} - F\,\mathbf{u}),
+	\mathcal{L}(\mathbf{y},\mathbf{u},\symbf{\lambda}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2}\, \mathbf{u}^T F \mathbf{u} + \symbf{\lambda}^T (B\,\mathbf{y} - F\,\mathbf{u}),
 \]
 where the Lagrangian multipliers are \(\symbf{\lambda} \in \mathbb{R}^{2N-1}\) corresponding to the constraints \(B\,\mathbf{y} - F\,\mathbf{u} = 0\).
 Taking gradients with respect to \(\mathbf{y}\), \(\mathbf{u}\), and \(\symbf{\lambda}\), and where \(F, B\) is symmetric (i.e., \(F^T = F\) and \(B^T = B\)), we have:
 \begin{align*}
-	\nabla_{\mathbf{y}}\mathcal{L} = F(\mathbf{y}-\mathbf{d}) + B^T\symbf{\lambda} & = 0 \\
+	\nabla_{\mathbf{y}}\mathcal{L} = F(\mathbf{y}-\mathbf{\bar{y}_d}) + B^T\symbf{\lambda} & = 0 \\
 	\nabla_{\mathbf{u}}\mathcal{L} = \alpha\,F\mathbf{u} - F^T\symbf{\lambda}      & = 0 \\
 	\nabla_{\symbf{\lambda}}\mathcal{L} = B\,\mathbf{y} - F\,\mathbf{u}            & = 0
 \end{align*}
 Which yields the \emph{Karush-Kuhn-Tucker (KKT)} optimality system:
 \begin{align*}
-	\mathbf{y} = \mathbf{d} - F^{-1}B\,\symbf{\lambda}. \tag{1} \label{eq:grad_y} \\
+	\mathbf{y} = \mathbf{\bar{y}_d} - F^{-1}B\,\symbf{\lambda}. \tag{1} \label{eq:grad_y} \\
 	\symbf{\lambda} = \alpha\,\mathbf{u}. \tag{2} \label{eq:grad_u}               \\
 	B\,\mathbf{y} = F\,\mathbf{u}. \tag{3} \label{eq:grad_lambda}
 \end{align*}
@@ -593,7 +593,7 @@ From equation \eqref{eq:grad_u} we have
 \(\symbf{\lambda} = \alpha\,\mathbf{u}\)
 Substitute this into equation \eqref{eq:grad_y}:
 \[
-	F(\mathbf{y}-\mathbf{d}) + \alpha\,B\,\mathbf{u} = 0. \tag{4} \label{eq:grad_y_u}
+	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,\mathbf{u} = 0. \tag{4} \label{eq:grad_y_u}
 \]
 Solving the state constraint \eqref{eq:grad_lambda} for \(\mathbf{u}\) gives
 \[
@@ -601,8 +601,8 @@ Solving the state constraint \eqref{eq:grad_lambda} for \(\mathbf{u}\) gives
 \]
 Substitute \eqref{eq:grad_lambda_u} into \eqref{eq:grad_y_u} and rearranging we obtain the reduced system for \(\mathbf{y}\):
 \begin{align*}
-	F(\mathbf{y}-\mathbf{d}) + \alpha\,B\,(F^{-1}B\,\mathbf{y}) & = 0.                                                                                  \\
-	\bigl(F + \alpha\,B\,F^{-1}B\bigr)\,\mathbf{y}              & = F\,\mathbf{d}.                                                                      \\
+	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,(F^{-1}B\,\mathbf{y}) & = 0.                                                                                  \\
+	\bigl(F + \alpha\,B\,F^{-1}B\bigr)\,\mathbf{y}              & = F\,\mathbf{\bar{y}_d}.                                                                      \\
 	\mathbf{y}                                                  & = \bigl(F + \alpha\,B\,F^{-1}B\bigr)^{-1}F\,\mathbf{d}. \tag{6} \label{eq:grad_y_u_d}
 \end{align*}
 Once \(\mathbf{y}\) is computed from \eqref{eq:grad_y_u_d}, the optimal control is recovered via \(\mathbf{u} = F^{-1}B\,\mathbf{y},\)

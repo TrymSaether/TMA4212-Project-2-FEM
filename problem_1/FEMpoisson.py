@@ -5,7 +5,6 @@ import scienceplots
 
 plt.style.use("science")
 
-
 class FEMPoissonSolver:
     def __init__(self, M, f, exact, du_exact, ddu_exact):
         self.M = M
@@ -96,7 +95,6 @@ class FEMPoissonSolver:
         self.u[self.free] = self.u_free
         return self.u
     
-
     def error(self):
         """
         Computes the L2 and H1 errors of the FEM solution.
@@ -113,44 +111,40 @@ class FEMPoissonSolver:
 
         # Loop over each element
         for k in range(self.M):
-            # Indices of the local degrees of freedom
-            indices = np.array([2 * k, 2 * k + 1, 2 * k + 2])
-            x_left = self.nodes[indices[0]]
-            x_right = self.nodes[indices[-1]]
-            h_k = x_right - x_left
-
-            # Local contributions for L2 and H1 error
+            idx = np.array([2*k, 2*k+1, 2*k+2])
+            xL  = self.nodes[idx[0]]
+            xR = self.nodes[idx[2]]
+            h_k     = xR - xL
+            
+            e_loc = 0.0
             e2_loc_L2 = 0.0
             e2_loc_H1 = 0.0
 
-            for q, xi in enumerate(self.xi_quad):
-                w = self.w_quad[q]
-                # Physical point in the element
-                x_q = x_left + h_k * xi
+            for a, xi in enumerate(self.xi_quad):
+                w_ref = self.w_quad[a]
+                x = xL + h_k * xi
+                u_h, du_h = 0.0, 0.0
+                for b in range(3):
+                    u_h  += self.u[idx[b]] * self.phi(b, xi)
+                    du_h += self.u[idx[b]] * self.dphi(b, xi) / h_k
 
-                # Approximate solution and derivative
-                u_h = 0.0
-                du_h = 0.0
-                for a in range(3):
-                    u_h += self.u[indices[a]] * self.phi(a, xi)
-                    du_h += self.u[indices[a]] * (1.0 / h_k) * self.dphi(a, xi)
+                u_ex  = self.exact(x)
+                du_ex = self.du_exact(x)
 
-                # Exact solution and derivative
-                u_ex = self.exact(x_q)
-                du_ex = self.du_exact(x_q)
-                
-                e2_loc_L2 += w *(u_ex - u_h)**2
-                e2_loc_H1 += w *(du_ex - du_h)**2
+                # Accumulate local integrals on reference domain
+                e2_loc_L2 += w_ref * (u_ex - u_h)**2 
+                e2_loc_H1 += w_ref * (du_ex - du_h)**2
 
-            L2_error_sq += e2_loc_L2 * h_k
+            # Multiply by h_k to get the actual integral on [x_left, x_right]
+            L2_error_sq += e2_loc_L2 / h_k
             H1_error_sq += e2_loc_H1 * h_k
 
-        # Final errors
+        # Take square roots for final norms
         L2_error = np.sqrt(L2_error_sq)
         H1_error = np.sqrt(H1_error_sq)
 
         return L2_error, H1_error
-    
+
 def plot_solution(solver, fine_mesh=200, name="test", savefig=False):
     x_fine = np.linspace(0, 1, fine_mesh)
     u_exact = solver.exact(x_fine)
@@ -264,7 +258,7 @@ def plot_stiffness_matrix_and_load_vector(solver, name="test", savefig=False):
     plt.show()
 
 def convergence_test(solver):
-    M_vals = [4, 8, 16, 32, 64, 128, 256, 512]
+    M_vals = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
     errors_L2 = []
     errors_H1 = []
     hs = []

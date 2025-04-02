@@ -574,3 +574,28 @@ Consider the simple test problem $-u''(x)= 1$ for $x\in [0,1]$ with \(u(0)=u(1)=
 	\caption{Finite element solution \(u_h(x)\) (blue dotted-solid line) versus the exact solution \(u(x)=\frac{1}{2}x(1-x)\) (red solid line) for the simple Poisson problem with \(M=20\) quadratic elements.}
 	\label{fig:solution_simple}
 \end{figure}
+\begin{example}{Quadratic element mesh}{mesh_3}
+	A mesh with $N=3$ elements has $(N+1)$ nodes and $N$ midpoints. Before boundary conditions, this yields $2N+1=7$ local shape functions. After enforcing $v(0)=v(1)=0$, we have $2N-1=5$ degrees of freedom.
+	\begin{figure}[H]
+		\centering
+		\begin{tikzpicture}[scale=4]
+			% Draw interval [0,1]
+			\draw[thick] (0,0) -- (1,0);
+
+			% Nodes (filled circles)
+			\foreach \x in {0,0.33,0.67,1}
+			\draw[fill=black] (\x,0) circle (0.02)
+			node[above] {$x_{\pgfmathparse{round(\x*3)}\pgfmathresult}$};
+
+			% Midpoints (open circles) 
+			\foreach \x in {0.165,0.5,0.835}
+			\draw (\x,0) circle (0.02) node[below] {mid};
+
+			% Element labels
+			\foreach \x/\i in {0.165/0,0.5/1,0.835/2}
+			\draw[<->] (\x-0.165,0.15) -- (\x+0.165,0.15)
+			node[midway,above] {$K_{\i}$};
+		\end{tikzpicture}
+		\caption{Quadratic finite element mesh with $N=3$ elements showing nodes (solid dots) and element midpoints (open circles).}
+	\end{figure}
+\end{example}

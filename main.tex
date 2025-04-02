@@ -32,19 +32,19 @@ The Galerkin finite element method restricts this infinite-dimensional problem t
 \]
 This leads to a linear system for the coefficients of \(u_h\) with respect to a finite element basis.
 In the following sections, we describe the construction of \(V_h\) using quadratic Lagrange elements on a non-uniform mesh, derive the element matrices and the assembly process, and finally implement the solver to verify its accuracy.
-\clearpage
+
 \subsection{Mesh and Basis Functions}
 Let
 \[
 	0 = x_0 < x_1 < \cdots < x_N = 1
 \]
-be a partition of the interval $[0,1]$ into $N$ subintervals (elements) $K_i = (x_i, x_{i+1})$. We allow the element lengths
+be a partition of the interval $[0,1]$ into $N$ subintervals (elements) $K_k = (x_k, x_{k+1})$. We allow the element lengths
 \[
-	h_i = x_{i+1} - x_i
+	h_k = x_{k+1} - x_k
 \]
-to vary from element to element. On each element $K_i$, the unknown function $u(x)$ is approximated by a quadratic polynomial. Globally, the finite element space is defined as
+to vary from element to element. On each element $K_k$, the unknown function $u(x)$ is approximated by a quadratic polynomial. Globally, the finite element space is defined as
 \[
-	V_h \;=\; \Bigl\{\,v \in C^{0}([0,1])\;:\; v\bigl|_{K_i} \,\in\, \mathbb{P}_2,\;\; \forall\, i=0,\dots,N-1 \Bigr\},
+	V_h \;=\; \Bigl\{\,v \in C^{0}([0,1])\;:\; v\bigl|_{K_k} \,\in\, \mathbb{P}_2,\;\; \forall\, i=0,\dots,N-1 \Bigr\},
 \]
 with the additional condition \(v(0)=v(1)=0\) so that \(V_h \subset H^1_0([0,1])\).
 \subsubsection{Degrees of Freedom}
@@ -59,9 +59,9 @@ After imposing the homogeneous Dirichlet conditions $v(0)=v(1)=0$, the degrees o
 free degrees of freedom in the global space.
 
 \subsection{Local Shape Functions}
-On the reference element $\widehat{K}=[0,1]$, we choose the convenient reference nodes \(\widehat{\xi}_\beta=0,0.5,1\), where we define the local Lagrange basis functions
+On the reference element $\widehat{K}=[0,1]$, we choose the convenient reference nodes \(\xi_\beta=\{0,0.5,1\}\), where we define the local Lagrange basis functions
 \[
-	\Psi_{\alpha}(\widehat{\xi}_{\beta})
+	\Psi_{\alpha}(\xi_{\beta})
 	= \delta_{\alpha\beta} =
 	\begin{cases}
 		\Psi_0(\xi) = 2\xi^2-3\xi+1 \\
@@ -71,21 +71,21 @@ On the reference element $\widehat{K}=[0,1]$, we choose the convenient reference
 \]
 These functions are chosen such that they vanish at two of the three reference nodes and equal $1$ at the remaining node.
 
-To map from the reference element $\widehat{K}$ to a physical element $K_i=[x_i,x_{i+1}]$, we use the affine transformation
+To map from the reference element $\widehat{K}$ to a physical element $K_k=[x_k,x_{k+1}]$, we use the affine transformation
 \[
-	\Phi_{K_i}:\,\widehat{K}\to K_i,\quad x=\Phi_{K_i}(\xi)=x_i+\xi\,h_i.
+	\Phi_{K_k}:\,\widehat{K}\to K_k,\quad x=\Phi_{K_k}(\xi)=x_k+\xi\,h_k.
 \]
-Thus, the physical shape functions on $K_i$ are given by
+Thus, the physical shape functions on $K_k$ are given by
 \[
-	\phi_{\alpha}^{(i)}(x) \;=\; \Psi_{\alpha}\!\Bigl(\frac{x-x_i}{h_i}\Bigr),\quad \alpha=0,1,2.
+	\phi_{\alpha}^{K_k}(x) \;=\; \Psi_{\alpha}\!\Bigl(\frac{x-x_k}{h_k}\Bigr),\quad \alpha=0,1,2.
 \]
-Each $\phi_{\alpha}^{(i)}(x)$ is supported only on $K_i$.
+Each $\phi_{\alpha}^{K_k}(x)$ is supported only on $K_k$.
 
 \begin{figure}[H]
 	\centering
 	\begin{tikzpicture}[scale=3]
 		% Reference element plot
-		\begin{scope}[xshift=-1.5cm]
+		\begin{scope}[xshift=-1.0cm]
 			% Grid
 			\draw[very thin,color=gray!30] (-0.2,-0.2) grid[step=0.2] (1,1);
 			\draw[->,thick] (-0.2,0) -- (1.2,0) node[right] {\(\xi\)};
@@ -104,10 +104,10 @@ Each $\phi_{\alpha}^{(i)}(x)$ is supported only on $K_i$.
 		\end{scope}
 
 		% Transformation arrow
-		\node[above] at (0.5,0.5) {\(\overset{\Phi_{K_k}}{\Longrightarrow}\)};
+		\node[above] at (0.25,0.25) {\(\overset{\Phi_{K_k}}{\Longrightarrow}\)};
 
 		% Physical element plot
-		\begin{scope}[xshift=1.5cm]
+		\begin{scope}[xshift=1.0cm]
 			% Grid
 			\draw[very thin,color=gray!30] (-0.2,-0.2) grid[step=0.2] (1,1);
 			\draw[->,thick] (-0.2,0) -- (1.2,0) node[right] {\(x\)};
@@ -141,77 +141,54 @@ The resulting global basis functions satisfy the property
 	\varphi_j(x_\ell) \;=\; \delta_{j\ell},
 \]
 where the index $j$ runs over the total set of node and midpoint positions (excluding the two boundary nodes after imposing $v(0)=v(1)=0$). Thus, the final dimension of $V_h$ is $2N-1$.
-\begin{example}{Quadratic element mesh}{mesh_3}
-	A mesh with $N=3$ elements has $(N+1)$ nodes and $N$ midpoints. Before boundary conditions, this yields $2N+1=7$ local shape functions. After enforcing $v(0)=v(1)=0$, we have $2N-1=5$ degrees of freedom.
-	\begin{figure}[H]
-		\centering
-		\begin{tikzpicture}[scale=4]
-			% Draw interval [0,1]
-			\draw[thick] (0,0) -- (1,0);
 
-			% Nodes (filled circles)
-			\foreach \x in {0,0.33,0.67,1}
-			\draw[fill=black] (\x,0) circle (0.02)
-			node[above] {$x_{\pgfmathparse{round(\x*3)}\pgfmathresult}$};
-
-			% Midpoints (open circles) 
-			\foreach \x in {0.165,0.5,0.835}
-			\draw (\x,0) circle (0.02) node[below] {mid};
-
-			% Element labels
-			\foreach \x/\i in {0.165/0,0.5/1,0.835/2}
-			\draw[<->] (\x-0.165,0.15) -- (\x+0.165,0.15)
-			node[midway,above] {$K_{\i}$};
-		\end{tikzpicture}
-		\caption{Quadratic finite element mesh with $N=3$ elements showing nodes (solid dots) and element midpoints (open circles).}
-	\end{figure}
-\end{example}
 Using this basis, any \(u_h \in V_h\) can be written as
 \[
-	u_h(x) = \sum_{j=1}^{2N-1} U_j\,\varphi_j(x)\,,
+	u_h(x) = \sum_{j=1}^{2N-1} u_j\,\varphi_j(x)\,,
 \]
-where \(U_j\) are the unknown coefficients (corresponding to the values of \(u_h\) at each interior node or midpoint).
-Substituting this expansion into the weak equation \((*)\) and choosing \(v_h=\varphi_i\) in turn yields a linear system \(K U = F\), as derived next.
+where \(u_j\) are the unknown coefficients (corresponding to the values of \(u_h\) at each interior node or midpoint).
+Substituting this expansion into the weak equation~\eqref{eq:weak_form} and choosing \(v_h=\varphi_i\) in turn yields a linear system \(A \mathbf{u} = \mathbf{b}\), as derived next.
 
 \subsubsection{Discrete Galerkin Formulation}
 
 Substituting the expansions of \(u_h\) and \(v_h\) into the weak formulation~\eqref{eq:weak_form} yields
 \[
-	\sum_{j} U_j\,a(\varphi_j,\varphi_i) = F(\varphi_i), \qquad \forall i.
+	\sum_{j} u_j\,a(\varphi_j,\varphi_i) = F(\varphi_i), \qquad \forall i.
 \]
 Thus, the system matrix entries are
 \[
-	K_{ij} = a(\varphi_j,\varphi_i) = \int_{0}^{1} \varphi_j'(x)\,\varphi_i'(x)\,dx,
+	A_{ij} = a(\varphi_i,\varphi_j) = \int_{0}^{1} \varphi_i'(x)\,\varphi_j'(x)\,dx,
 \]
 and the right-hand side entries are
 \[
-	F_i = F(\varphi_i) = \int_{0}^{1} f(x)\,\varphi_i(x)\,dx.
+	\symbf{b}^{K_k} = \int_{0}^{1} f(x)\,\varphi_i(x)\,dx.
 \]
-We assemble these integrals \emph{element-by-element}. Each element \(K_i=(x_i,x_{i+1})\) has 3 local basis functions \(\phi_0^{(i)},\,\phi_1^{(i)},\,\phi_2^{(i)}\) (which are restrictions of certain global \(\varphi_j\)). The element’s contribution to \(K_{ij}\) is nonzero only if \(\varphi_i\) and \(\varphi_j\) both have support on that element (i.e., correspond to local basis functions on \(K_i\)). In practice, we compute an \emph{element stiffness matrix}
+We assemble these integrals \emph{element-by-element}. 
+Each element \(K_k=(x_k,x_{k+1})\) has 3 local basis functions \(\phi_0^{K_k},\,\phi_1^{K_k},\,\phi_2^{K_k}\) (which are restrictions of certain global \(\varphi_j\)). The element’s contribution to \(A_{ij}\) is nonzero only if \(\varphi_i\) and \(\varphi_j\) both have support on that element (i.e., correspond to local basis functions on \(K_k\)). In practice, we compute an \emph{element stiffness matrix}
 \[
-	K^{(i)}_{\alpha\beta}= \int_{x_i}^{x_{i+1}} \bigl(\phi_{\beta}^{(i)}\bigr)' \bigl(\phi_{\alpha}^{(i)}\bigr)'\,dx,\qquad \alpha,\beta=0,1,2,
+	A^{K_k}_{\alpha\beta}= \int_{x_k}^{x_{k+1}} \bigl(\phi_{\beta}^{K_k}\bigr)' \bigl(\phi_{\alpha}^{K_k}\bigr)'\,dx,\qquad \alpha,\beta=0,1,2,
 \]
 and then add it into the global \(K\). Similarly, we compute an \emph{element load vector}
 \[
-	F^{(i)}_\alpha = \int_{x_i}^{x_{i+1}} f(x)\,\phi_{\alpha}^{(i)}(x)\,dx.
+	\symbf{b}^{K_k}_\alpha = \int_{x_k}^{x_{k+1}} f(x)\,\phi_{\alpha}^{K_k}(x)\,dx.
 \]
 
 \subsubsection{Local Stiffness Matrix}
 
-Using the reference mapping \(x = x_i + \xi\,h_i\), we have \(dx = h_i\,d\xi\) and
+Using the reference mapping \(x = x_k + \xi\,h_k\), we have \(dx = h_k\,d\xi\) and
 \begin{align*}
-	\frac{d\phi_{\alpha}^{(i)}}{dx}        & = \frac{1}{h_i}\Psi'_\alpha(\xi),   \\
+	\frac{d\phi_{\alpha}^{K_k}}{dx}        & = \frac{1}{h_k}\Psi'_\alpha(\xi),   \\
 	\Psi_0'(\xi)=4\xi-3,\quad \Psi_1'(\xi) & =-8\xi+4,\quad \Psi_2'(\xi)=4\xi-1.
 \end{align*}
-Thus, on element \(K_i\),
+Thus, on element \(K_k\),
 \[
-	K^{(i)}_{\alpha\beta} = \int_{0}^{1} \frac{1}{h_i}\Psi'_\alpha(\xi)\,\frac{1}{h_i}\Psi'_\beta(\xi)\,h_i\,d\xi
-	= \frac{1}{h_i} \mathcal{I}_{\alpha\beta}
+	A^{K_k}_{\alpha\beta} = \int_{0}^{1} \frac{1}{h_k}\Psi'_\alpha(\xi)\,\frac{1}{h_k}\Psi'_\beta(\xi)\,h_k\,d\xi
+	= \frac{1}{h_k} \mathcal{I}_{\alpha\beta}
 \]
 The reference integral \(\mathcal{I}_{\alpha\beta}\) is constant (the same for every element, since the reference shape functions \(\Psi_\alpha\) are fixed).
 Hence, the element stiffness matrix is
 \[
-	K^{(i)} = \frac{1}{3h_i}
+	A^{K_k} = \frac{1}{3h_k}
 	\begin{pmatrix}
 		7  & -8 & 1  \\
 		-8 & 16 & -8 \\
@@ -219,80 +196,79 @@ Hence, the element stiffness matrix is
 	\end{pmatrix}\,.
 \]
 
-In particular, for a uniform mesh (\(h_i=h\)) this shows the well-known pattern that on each element \(K^{(i)}\) the diagonal entries are \(\frac{7}{3h}\), the immediate off-diagonals are \(-\frac{8}{3h}\), and the corner entries are \(\frac{1}{3h}\). These couple each element's three local unknowns. Globally, each interior node is shared by two elements, which yields the proper summation in the assembly process.
-
 \subsubsection{Local Load Vector}
 
-For element \(K_i\), a change of variables \(x = x_i + \xi\,h_i\) gives
+For element \(K_k\), a change of variables \(x = x_k + \xi\,h_k\) gives
 \[
-	F^{(i)}_\alpha = \int_{0}^{1} f(x_i+\xi\,h_i)\,\Psi_\alpha(\xi)\,h_i\,d\xi.
+	\symbf{b}^{K_k}_\alpha = \int_{0}^{1} f(x_k+\xi\,h_k)\,\Psi_\alpha(\xi)\,h_k\,d\xi.
 \]
 We approximate this integral using \emph{Simpson's rule}, which is exact for polynomials up to cubic and is very accurate for smooth functions. Over \([0,1]\), Simpson's rule with nodes \(\xi=0,0.5,1\) gives
 \[
 	\int_0^1 g(\xi)\,d\xi \approx \frac{1}{6}\Bigl[g(0) + 4g(0.5) + g(1)\Bigr].
 \]
-Applying this to \(g(\xi)=f(x_i+\xi\,h_i)\,\Psi_\alpha(\xi)\) and using the Lagrange property \(\Psi_\alpha(\xi_\beta)=\delta_{\alpha\beta}\) (at \(\xi=0,\,0.5,\,1\)), we obtain:
+Applying this to \(g(\xi)=f(x_k+\xi\,h_k)\,\Psi_\alpha(\xi)\) and using the Lagrange property \(\Psi_\alpha(\xi_\beta)=\delta_{\alpha\beta}\), we obtain:
 \begin{align*}
-	F^{(i)}_0 & \approx \frac{h_i}{6}\Bigl[f(x_i)\,\Psi_0(0) + 4\,f\Bigl(\frac{x_i+x_{i+1}}{2}\Bigr)\,\Psi_0(0.5) + f(x_{i+1})\,\Psi_0(1)\Bigr] = \frac{h_i}{6}\,f(x_i),                              \\
-	F^{(i)}_1 & \approx \frac{h_i}{6}\Bigl[f(x_i)\,\Psi_1(0) + 4\,f\Bigl(\frac{x_i+x_{i+1}}{2}\Bigr)\,\Psi_1(0.5) + f(x_{i+1})\,\Psi_1(1)\Bigr] = \frac{2h_i}{3}\,f\Bigl(\frac{x_i+x_{i+1}}{2}\Bigr), \\
-	F^{(i)}_2 & \approx \frac{h_i}{6}\Bigl[f(x_i)\,\Psi_2(0) + 4\,f\Bigl(\frac{x_i+x_{i+1}}{2}\Bigr)\,\Psi_2(0.5) + f(x_{i+1})\,\Psi_2(1)\Bigr] = \frac{h_i}{6}\,f(x_{i+1})\,.
+	\symbf{b}^{K_k}_0 & \approx \frac{h_k}{6}\Bigl[f(x_k)\,\Psi_0(0) + 4\,f\Bigl(\frac{x_k+x_{k+1}}{2}\Bigr)\,\Psi_0(0.5) + f(x_{k+1})\,\Psi_0(1)\Bigr] = \frac{h_k}{6}\,f(x_k),                              \\
+	\symbf{b}^{K_k}_1 & \approx \frac{h_k}{6}\Bigl[f(x_k)\,\Psi_1(0) + 4\,f\Bigl(\frac{x_k+x_{k+1}}{2}\Bigr)\,\Psi_1(0.5) + f(x_{k+1})\,\Psi_1(1)\Bigr] = \frac{2h_k}{3}\,f\Bigl(\frac{x_k+x_{k+1}}{2}\Bigr), \\
+	\symbf{b}^{K_k}_2 & \approx \frac{h_k}{6}\Bigl[f(x_k)\,\Psi_2(0) + 4\,f\Bigl(\frac{x_k+x_{k+1}}{2}\Bigr)\,\Psi_2(0.5) + f(x_{k+1})\,\Psi_2(1)\Bigr] = \frac{h_k}{6}\,f(x_{k+1})\,.
 \end{align*}
 In vector form, for an element the Simpson rule approximation is
 \[
-	F^{(i)} \approx h_i\,
+	\symbf{b}^{K_k} \approx h_k\,
 	\begin{pmatrix}
-		\tfrac{1}{6} \\
-		\tfrac{2}{3} \\
+		\tfrac{1}{6} \\[2mm]
+		\tfrac{2}{3} \\[2mm]
 		\tfrac{1}{6}
 	\end{pmatrix}
 	\odot
 	\begin{pmatrix}
-		f(x_i)                             \\
-		f\Bigl(\frac{x_i+x_{i+1}}{2}\Bigr) \\
-		f(x_{i+1})
+		f(x_k)                             \\[2mm]
+		f\Bigl(\frac{x_k+x_{k+1}}{2}\Bigr) \\[2mm]
+		f(x_{k+1})
 	\end{pmatrix},
 \]
-where \(\odot\) denotes elementwise multiplication. In the special case when \(f(x)\) is constant on \(K_i\), this formula is exact and reduces to
+
+where \(\odot\) denotes elementwise multiplication. In the special case when \(f(x)\) is constant on \(K_k\), this formula is exact and reduces to
+
 \[
-	F^{(i)} = f\,h_i\,\begin{pmatrix}\tfrac{1}{6} \\[1mm] \tfrac{2}{3} \\[1mm] \tfrac{1}{6}\end{pmatrix}\,.
+	\symbf{b}^{K_k} = f\,h_k\,
+	\begin{pmatrix}
+		\tfrac{1}{6} \\[2mm] 
+		\tfrac{2}{3} \\[2mm] 
+		\tfrac{1}{6}\end{pmatrix}\,.
 \]
 
-\begin{remark}{Exactness of Simpson's Rule}{}
-	Simpson's rule is exact for polynomials of degree up to 3. For a quadratic \(f(x)\), the Simpson approximation is exact. For a linear \(f(x)\), it is exact as well, since the midpoint rule is exact for linear functions. For a constant \(f(x)\), it is trivially exact.
+\begin{remark}{Exactness of Simpson's Rule}{simpson_exactness}
+	Simpson's rule is exact for polynomials of degree up to 3. 
+	For a quadratic \(f(x)\), the Simpson approximation is exact. 
+	For a linear \(f(x)\), it is exact as well, since the midpoint rule is exact for linear functions. For a constant \(f(x)\), it is trivially exact.
 \end{remark}
 
 \subsection{Assembly and Global System}
 
-Once the local matrices \(K^{(i)}\) and vectors \(F^{(i)}\) are computed for each element, they are assembled into the global matrix \(K\) and vector \(F\) by summing the contributions from each element. Specifically, if the local basis function \(\phi_\alpha^{(i)}\) corresponds to the global basis function \(\varphi_p\) (via a local-to-global mapping \(\theta(i,\alpha)=p\)), then the contribution \(K^{(i)}_{\alpha\beta}\) is added to \(K_{pq}\), and \(F^{(i)}_\alpha\) is added to \(F_p\).
+Once the local matrices \(A^{K_k}\) and vectors \(\symbf{b}^{K_k}\) are computed for each element, they are assembled into the global matrix \(A\) and vector \(\mathbf{b}\) by summing the contributions from each element. 
+The assembly process uses a local-to-global mapping \(\theta(i,\alpha)=p\) to identify which global basis function \(\varphi_p\) corresponds to each local basis function \(\phi_\alpha^{K_k}\), ensuring that element contributions \(A^{K_k}_{\alpha\beta}, \symbf{b}^{K_k}_\alpha\) are properly summed into the appropriate entries of the global stiffness matrix  \(A_p\) and load vector \(\mathbf{b}_p\).
 
-Note that if a node lies on the boundary (e.g., \(x_0\) or \(x_N\)), its corresponding basis function is not included in the global unknowns since the homogeneous Dirichlet condition \(u_h(0)=u_h(1)=0\) is enforced directly. Consequently, the resulting global system is of size \((2N-1) \times (2N-1)\).
-
-After assembly, we obtain the symmetric positive-definite linear system
+Note that if a node lies on the boundary (e.g., \(x_0\) or \(x_N\)), its corresponding basis function is not included in the global unknowns since the homogeneous Dirichlet condition \(u_h(0)=u_h(1)=0\) is enforced directly. 
+Consequently, the resulting global system is of size \((2N-1) \times (2N-1)\). After assembly, we obtain the \emph{symmetric positive-definite} linear system.
 \[
-	K\,U = F,
+	A\,\mathbf{u} = \mathbf{b}.
 \]
-where \(U = (U_1,\dots,U_{2N-1})^T\) contains the unknown coefficients, and the finite element solution is given by
-\[
-	u_h(x)=\sum_{j=1}^{2N-1} U_j\,\varphi_j(x)\,.
-\]
-
-\begin{remark}{Visualization of the Global System}{}
-	For example, when using \(M=5\) elements, the global stiffness matrix and load vector can be visualized as in Figure~\ref{fig:stiffness_load}.
+\begin{example}{Visualization of the Global System}{}
 	\begin{figure}[H]
 		\centering
-		\includegraphics[width=0.85\textwidth]{figures/stiffness_load_sine_M5.png}
-		\caption{Global stiffness matrix \(K\) and load vector \(F\) for a Poisson problem with \(M=5\) elements.}
+		\includegraphics[width=0.8\textwidth]{figures/stiffness_load_sine_M5.png}
+		\caption{Global stiffness matrix \(A\) and load vector \(\mathbf{b}\) for a Poisson problem with \(M=5\) elements.}
 		\label{fig:stiffness_load}
 	\end{figure}
-\end{remark}
+\end{example}
 
-
-\subsection{Implementation and Numerical Results}
+\subsection{Implementation}
 We implemented our \(\mathbb{P}_2\) finite element solver in Python. The code constructs
 the mesh and basis mappings, computes element matrices and vectors (using Simpson's rule),
 assembles the global system, and solves it with a dense linear solver for simplicity.
-Non-uniform meshes are supported by computing each element's \(h_i\) and applying the
-corresponding formulae. Key parts of the implementation are shown below:
+Non-uniform meshes are supported by computing each element's \(h_k\) and applying the
+corresponding formulae. Pseudo--code for the assembly process is shown in Algorithm~\ref{alg:FEM_assembly}.
 
 \begin{algorithm}[H]
 	\caption{Finite Element Assembly for Quadratic Elements}
@@ -300,10 +276,7 @@ corresponding formulae. Key parts of the implementation are shown below:
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
 	\Input{
-		\(M\) (number of elements), \(x\) (mesh points arranged so that \(x_{2k}\) is the left node,
-		\(x_{2k+1}\) the midpoint, and \(x_{2k+2}\) the right node for element \(k\)),
-		\(f\) (source function),\\
-		\texttt{global\_node\_index} (mapping from local to global indices)
+		\(f, M, K_k,\texttt{mesh},\texttt{global\_node\_index}\)\\
 	}
 	\BlankLine
 	\texttt{A} \(\leftarrow\) zeros\((2M-1, 2M-1)\)\;
@@ -312,9 +285,7 @@ corresponding formulae. Key parts of the implementation are shown below:
 	\For{\(k = 0\) \textbf{to} \(M-1\)}{
 		\(h_k \leftarrow x_{2k+2} - x_{2k}\)\;
 		\texttt{A\_loc} \(\leftarrow\) localStiffnessMatrix(\(h_k\))\;
-		\(\texttt{b\_loc}[0] \leftarrow \dfrac{h_k}{6}\Bigl[f(x_{2k}) + 4\,f(x_{2k+1}) + f(x_{2k+2})\Bigr]\)\;
-		\(\texttt{b\_loc}[1] \leftarrow \dfrac{2h_k}{3}\,f\Bigl(\tfrac{x_{2k}+x_{2k+2}}{2}\Bigr)\)\;
-		\(\texttt{b\_loc}[2] \leftarrow \dfrac{h_k}{6}\Bigl[f(x_{2k}) + 4\,f(x_{2k+1}) + f(x_{2k+2})\Bigr]\)\;
+		\(\texttt{b\_loc} \leftarrow\) localLoadVector(\(h_k\), \(f\))\;
 		\BlankLine
 		\For{\(\alpha = 0\) \textbf{to} \(2\)}{
 			\(I \leftarrow \texttt{global\_node\_index}[k][\alpha]\)\;
@@ -326,9 +297,12 @@ corresponding formulae. Key parts of the implementation are shown below:
 		}
 	}
 	\BlankLine
-	\Output{\(A \in \mathbb{R}^{(2M-1)\times(2M-1)}\), \(b \in \mathbb{R}^{2M-1}\)}
+	\Output{\(A, b\)}
 \end{algorithm}
 
+Where $M$ is the number of elements, $x$ is a mesh--array  (where $x_{2k}$ is the left node, $x_{2k+1}$ is the midpoint, and $x_{2k+2}$ is the right node for element $k$), a source function $f$, and a mapping--array \texttt{global\_node\_index} that converts local element indices to global indices.
+
+\subsection{Numerical Results}
 We tested the solver on two example problems with known exact solutions.
 
 \subsubsection*{Smooth Sine Example}
@@ -435,7 +409,7 @@ We discretized both $y(x)$ and $u(x)$ in the same $\mathbb{P}_2$ finite element 
 \]
 where $M_{ij}=\int_0^1 \phi_i\phi_j\,dx$ is the mass matrix and $Y_d$ is the vector of interpolated $y_d(x)$ values on the basis.
 
-The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\in V_h$, which leads to the discrete linear constraint $Ky = Mu$, where $K_{ij}=\int_0^1 \phi_i'\phi_j'\,dx$ is the stiffness matrix (from $a(y,v)=\int y'v'\,dx$) and $Mu$ comes from the $L^2$ inner product of $u_h$ with basis $v=\phi_i$.
+The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\in V_h$, which leads to the discrete linear constraint $Ky = Mu$, where $A_{ij}=\int_0^1 \phi_i'\phi_j'\,dx$ is the stiffness matrix (from $a(y,v)=\int y'v'\,dx$) and $Mu$ comes from the $L^2$ inner product of $u_h$ with basis $v=\phi_i$.
 
 We assembled $K$ and $M$ using our FEM routines from Part 1. The optimality system for this quadratic OCP can be derived by setting the gradient of the Lagrangian $\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T(Ky - Mu)$ to zero. This yields the Karush–Kuhn–Tucker (KKT) conditions:
 \begin{align*}

@@ -417,17 +417,69 @@ Since the $H^1$ error is bounded by the $L^2$ error, we expect it to show simila
 
 The $H^1$ error decreases from $\mathcal{O}(10^{-2})$ with $N=5$ elements to $\mathcal{O}(10^{-6})$ at $N=64$, confirming the expected convergence rate of $\mathcal{O}(h^4)$.
 
-
 \section{Optimal Control Problem}
 \label{sec:optimal_control}
-We consider the optimal control problem (OCP): minimize
+\subsection*{Problem Formulation}
+We consider an optimal control problem for heating/cooling a physical domain \(\Omega=(0,1)\).
+Given a target temperature profile \(y_d \in L^2(\Omega)\) and a control cost parameter \(\alpha > 0\), we seek to minimize
 \[
-	J(y,u) = \frac{1}{2}\int_0^1 |y(x)-y_d(x)|^2\,dx + \frac{\alpha}{2}\int_0^1 |u(x)|^2\,dx,
+	J(y,u) = \frac{1}{2}\int_0^1 |y-y_d|^2\,dx + \frac{\alpha}{2}\int_0^1 u^2\,dx,
 \]
-subject to the PDE constraint $-y'' = u$ on $(0,1)$ with $y(0)=y(1)=0$. Here $y_d(x)$ is a given target (desired state) and $\alpha>0$ is a regularization parameter penalizing the $L^2$-norm of the control $u$. The first term of $J$ measures how closely the state $y(x)$ matches the desired profile $y_d(x)$, while the second term imposes a cost on the control effort $u(x)$. A small $\alpha$ means we prioritize tracking $y_d$ closely (allowing larger control magnitudes), whereas a large $\alpha$ emphasizes minimizing control energy, at the expense of state accuracy. This OCP is a classic PDE-constrained optimization example.
+subject to \(y\) solving the Poisson equation with homogeneous Dirichlet conditions:
+\[
+	-\Delta y = u \quad\text{in }\Omega, \qquad y(0) = y(1) = 0.
+\]
+Here \(u\) represents the distributed heat source/sink (control) and \(y\) is the resulting temperature (state).
+We discretize this optimal control problem using finite elements:
+\[
+	\min_{u_h,y_h\in V_h} \frac{1}{2}\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} + \frac{\alpha}{2}\|u_h\|^2_{L^2(\Omega)}
+\]
+subject to
+\[
+	a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)} \quad \forall v\in V_h,
+\]
+where \(\bar{y}_d\) is the interpolation of \(y_d\) onto \(X^2_h\), \(V_h = X^2_h \cap H^1_0(\Omega)\), and \(a\) is the bilinear form previously discussed.
 
-\subsection{Discretization and Optimality System}
+\subsection{Discretization of the OCP}
+First, we expand the objective function, state and control variables in terms of the discrete basis functions:
+\[
+	\bar{y}_d(x) = \sum_{j=1}^{2N-1} d_j \varphi_j(x), \quad
+	y_h(x) = \sum_{j=1}^{2N-1} y_j \varphi_j(x), \quad
+	u_h(x) = \sum_{j=1}^{2N-1} u_j \varphi_j(x)
+\]
+Expanding each term in the objective function:
+\begin{align*}
+	\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} & = 
+	\int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-(\bar{y}_d)_j)\varphi_j(x)\right)^2 dx = 
+	\sum_{i,j=1}^{2N-1} \left(y_i - (\bar{y}_d)_i)(y_j - (\bar{y}_d)_j) \int_0^1 \phi_i(x) \phi_j(x) \, dx\right)\\
+	\|u_h\|^2_{L^2(\Omega)}             & = 
+	\int_0^1 \left(\sum_{j=1}^{2N-1} u_j \varphi_j(x)\right)^2 dx =  
+	\sum_{i,k=1}^{2N-1} \left( (u_i u_k) \int_0^1 \phi_i(x)\phi_k(x) \, dx\right) 
+\end{align*}
 
+This is equivalent to the \(L^2(\Omega)\) inner product of two polynomial approximations, which satisfies the identity:
+\[
+\langle u, v \rangle_{L^2(\Omega)} = \sum_{i,k} u_i v_k \int_\Omega \phi_i(x) \phi_k(x) \, dx 
+= u^T M v
+\]
+where \(M\) is the mass matrix, as the integral of the basis functions is by definition equal to the \((i,k)\)-th element of \(M\).
+
+Thus, the objective function can be expressed as:
+\[
+	G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T M (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2} \mathbf{u}^T M \mathbf{u}
+\]
+For the constraint \(a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)}\), testing with \(v = \varphi_i\) for \(i=1,\dots,2N-1\):
+\[
+	\sum_{j=1}^{2N-1} y_j a(\varphi_j,\varphi_i) = \sum_{j=1}^{2N-1} u_j \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}
+\]
+
+By definition the stiffness matrix \(A = a(\varphi_j,\varphi_i)\) and mass matrix \(M = \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}\), the constraint becomes:
+\[
+	A \mathbf{y} = M \mathbf{u}
+\]
+ Thus, \(B = A\), the stiffness matrix, and \(F = M\), the mass matrix.
+
+\subsection{Lagrangian multipliers and critical points}
 We discretized both $y(x)$ and $u(x)$ in the same $\mathbb{P}_2$ finite element space $V_h = X_h^2 \cap H_0^1(0,1)$ (i.e. continuous piecewise quadratics vanishing at the boundaries). This means the control $u_h(x)$ is also represented by quadratic basis functions on the mesh (note that $u$ itself need not satisfy any boundary condition, but choosing $u_h\in V_h$ conveniently yields equal degrees of freedom for $y$ and $u$). Let $\{\phi_j(x)\}_{j=1}^{M}$ be the interior basis functions (with $M=2N-1$ for $N$ elements). We write $y_h(x)=\sum_j y_j\phi_j(x)$ and $u_h(x)=\sum_j u_j\phi_j(x)$. The discrete objective can be written in matrix form as
 \[
 	G(y,u) = \frac{1}{2}(y-Y_d)^T M(y-Y_d) + \frac{\alpha}{2}\,u^T M\,u,
@@ -520,93 +572,5 @@ In summary, if $y_d$ is smooth and compatible with the PDE constraints, the OCP 
 \paragraph{Conclusion:}
 The FEM-based solver successfully handled the optimal control problem, producing solutions that satisfy the first-order optimality conditions. The numerical experiments validated the expected convergence rates for the forward problem and illustrated the influence of the control cost $\alpha$ and target function $y_d$. We saw that our implementation can capture the qualitative features of optimal states and controls in different regimes. Especially, the transitions from minimal control to aggressive control regimes (as $\alpha$ varies) and the effect of target regularity (smooth vs. discontinuous $y_d$) were clearly observed, matching theoretical expectations. Overall, the results demonstrate consistency between the discrete solutions and the underlying analysis of the OCP, and they highlight how the finite element approach provides a flexible framework to solve and explore such PDE-constrained optimization problems.
 
-
-\section{Optimal Control Problem}
-\subsection*{Problem Formulation}
-Consider an optimal control problem for heating/cooling a physical domain \(\Omega=(0,1)\).
-Given a target temperature profile \(y_d \in L^2(\Omega)\) and a control cost parameter \(\alpha > 0\), we seek to minimize
-\[
-	J(y,u) = \frac{1}{2}\int_0^1 |y-y_d|^2\,dx + \frac{\alpha}{2}\int_0^1 u^2\,dx,
-\]
-subject to \(y\) solving the Poisson equation with homogeneous Dirichlet conditions:
-\[
-	-\Delta y = u \quad\text{in }\Omega, \qquad y(0) = y(1) = 0.
-\]
-Here \(u\) represents the distributed heat source/sink (control) and \(y\) is the resulting temperature (state).
-We discretize this optimal control problem using finite elements:
-\[
-	\min_{u_h,y_h\in V_h} \frac{1}{2}\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} + \frac{\alpha}{2}\|u_h\|^2_{L^2(\Omega)}
-\]
-subject to
-\[
-	a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)} \quad \forall v\in V_h,
-\]
-where \(\bar{y}_d\) is the interpolation of \(y_d\) onto \(X^2_h\), \(V_h = X^2_h \cap H^1_0(\Omega)\), and \(a\) is the bilinear form from Part 1.
-\subsection*{Problem 2 (a): Discretization and Formulation}
-\subsubsection*{Matrix formulation of OCP}
-To express the optimization problem in matrix form, we need to represent both the objective function and constraints using matrices.
-First, we expand the objective function (target temperature), state and control variables in terms of the basis functions:
-\[
-	\bar{y}_d(x) = \sum_{j=1}^{2N-1} d_j \varphi_j(x), \quad
-	y_h(x) = \sum_{j=1}^{2N-1} y_j \varphi_j(x), \quad
-	u_h(x) = \sum_{j=1}^{2N-1} u_j \varphi_j(x)
-\]
-Expanding each term in the objective function:
-\begin{align*}
-	\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} & = \int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-(\bar{y}_d)_j)\varphi_j(x)\right)^2 dx = (\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) \\
-	\|u_h\|^2_{L^2(\Omega)}             & = \int_0^1 \left(\sum_{j=1}^{2N-1} u_j \varphi_j(x)\right)^2 dx = \mathbf{u}^T F \mathbf{u}
-\end{align*}
-
-Thus, the objective function can be expressed as:
-\[
-	G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u}
-\]
-For the constraint \(a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)}\), testing with \(v = \varphi_i\) for \(i=1,\dots,2N-1\):
-\[
-	\sum_{j=1}^{2N-1} y_j a(\varphi_j,\varphi_i) = \sum_{j=1}^{2N-1} u_j \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}
-\]
-Defining the stiffness matrix \(B_{ij} = a(\varphi_j,\varphi_i)\) and mass matrix \(F_{ij} = \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}\), the constraint becomes:
-\[
-	B \mathbf{y} = F \mathbf{u}
-\]
-\subsection*{Problem 2 (b): Lagrangian Formulation}
-
-We now introduce the Lagrangian for the OCP:
-\[
-	\mathcal{L}(\mathbf{y},\mathbf{u},\symbf{\lambda}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2}\, \mathbf{u}^T F \mathbf{u} + \symbf{\lambda}^T (B\,\mathbf{y} - F\,\mathbf{u}),
-\]
-where the Lagrangian multipliers are \(\symbf{\lambda} \in \mathbb{R}^{2N-1}\) corresponding to the constraints \(B\,\mathbf{y} - F\,\mathbf{u} = 0\).
-Taking gradients with respect to \(\mathbf{y}\), \(\mathbf{u}\), and \(\symbf{\lambda}\), and where \(F, B\) is symmetric (i.e., \(F^T = F\) and \(B^T = B\)), we have:
-\begin{align*}
-	\nabla_{\mathbf{y}}\mathcal{L} = F(\mathbf{y}-\mathbf{\bar{y}_d}) + B^T\symbf{\lambda} & = 0 \\
-	\nabla_{\mathbf{u}}\mathcal{L} = \alpha\,F\mathbf{u} - F^T\symbf{\lambda}      & = 0 \\
-	\nabla_{\symbf{\lambda}}\mathcal{L} = B\,\mathbf{y} - F\,\mathbf{u}            & = 0
-\end{align*}
-Which yields the \emph{Karush-Kuhn-Tucker (KKT)} optimality system:
-\begin{align*}
-	\mathbf{y} = \mathbf{\bar{y}_d} - F^{-1}B\,\symbf{\lambda}. \tag{1} \label{eq:grad_y} \\
-	\symbf{\lambda} = \alpha\,\mathbf{u}. \tag{2} \label{eq:grad_u}               \\
-	B\,\mathbf{y} = F\,\mathbf{u}. \tag{3} \label{eq:grad_lambda}
-\end{align*}
-
-\subsection*{Reduced Optimality System}
-From equation \eqref{eq:grad_u} we have
-\(\symbf{\lambda} = \alpha\,\mathbf{u}\)
-Substitute this into equation \eqref{eq:grad_y}:
-\[
-	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,\mathbf{u} = 0. \tag{4} \label{eq:grad_y_u}
-\]
-Solving the state constraint \eqref{eq:grad_lambda} for \(\mathbf{u}\) gives
-\[
-	\mathbf{u} = F^{-1}B\,\mathbf{y}. \tag{5} \label{eq:grad_lambda_u}
-\]
-Substitute \eqref{eq:grad_lambda_u} into \eqref{eq:grad_y_u} and rearranging we obtain the reduced system for \(\mathbf{y}\):
-\begin{align*}
-	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,(F^{-1}B\,\mathbf{y}) & = 0.                                                                                  \\
-	\bigl(F + \alpha\,B\,F^{-1}B\bigr)\,\mathbf{y}              & = F\,\mathbf{\bar{y}_d}.                                                                      \\
-	\mathbf{y}                                                  & = \bigl(F + \alpha\,B\,F^{-1}B\bigr)^{-1}F\,\mathbf{d}. \tag{6} \label{eq:grad_y_u_d} 
-\end{align*}
-Once \(\mathbf{y}\) is computed from \eqref{eq:grad_y_u_d}, the optimal control is recovered via \(\mathbf{u} = F^{-1}B\,\mathbf{y},\)
-and the Lagrange multiplier is given by \(\symbf{\lambda} = \alpha\,\mathbf{u}\).
 
 \end{document}

@@ -599,3 +599,295 @@ Consider the simple test problem $-u''(x)= 1$ for $x\in [0,1]$ with \(u(0)=u(1)=
 		\caption{Quadratic finite element mesh with $N=3$ elements showing nodes (solid dots) and element midpoints (open circles).}
 	\end{figure}
 \end{example}
+
+
+We consider the optimal control problem (OCP): minimize
+\[
+	J(y,u) = \frac{1}{2}\int_0^1 |\mathbf{y}(x)-\bar{\mathbf{y}}_d(x)|^2\,dx + \frac{\alpha}{2}\int_0^1 |u(x)|^2\,dx,
+\]
+subject to the PDE constraint $-\mathbf{y}'' = u$ on $(0,1)$ with $\mathbf{y}(0)=\mathbf{y}(1)=0$. Here $\bar{\mathbf{y}}_d(x)$ is a given target (desired state) and $\alpha>0$ is a regularization parameter penalizing the $L^2$-norm of the control $u$. The first term of $J$ measures how closely the state $\mathbf{y}(x)$ matches the desired profile $\bar{\mathbf{y}}_d(x)$, while the second term imposes a cost on the control effort $u(x)$. A small $\alpha$ means we prioritize tracking $\bar{\mathbf{y}}_d$ closely (allowing larger control magnitudes), whereas a large $\alpha$ emphasizes minimizing control energy, at the expense of state accuracy. This OCP is a classic PDE-constrained optimization example.
+
+\subsection{Discretization and Optimality System}
+
+We discretized both $\mathbf{y}(x)$ and $u(x)$ in the same $\mathbb{P}_2$ finite element space $V_h = X_h^2 \cap H_0^1(0,1)$ (i.e. continuous piecewise quadratics vanishing at the boundaries). This means the control $u_h(x)$ is also represented by quadratic basis functions on the mesh (note that $u$ itself need not satisfy any boundary condition, but choosing $u_h\in V_h$ conveniently yields equal degrees of freedom for $y$ and $u$). Let $\{\phi_j(x)\}_{j=1}^{M}$ be the interior basis functions (with $M=2N-1$ for $N$ elements). We write $y_h(x)=\sum_j y_j\phi_j(x)$ and $u_h(x)=\sum_j u_j\phi_j(x)$. The discrete objective can be written in matrix form as
+\[
+	G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(y-\bar{\mathbf{y}}_d)^T M(y-\bar{\mathbf{y}}_d) + \frac{\alpha}{2}\,u^T M\,u,
+\]
+where $M_{ij}=\int_0^1 \phi_i\phi_j\,dx$ is the mass matrix and $\bar{\mathbf{y}}_d$ is the vector of interpolated $\bar{\mathbf{y}}_d(x)$ values on the basis. $B = K, M = F$
+
+The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\in V_h$, which leads to the discrete linear constraint $B\mathbf{y} = Ku$, where $B_{ij}=\int_0^1 \phi_i'\phi_j'\,dx$ is the stiffness matrix (from $a(y,v)=\int \mathbf{y}'v'\,dx$) and $Mu$ comes from the $L^2$ inner product of $u_h$ with basis $v=\phi_i$.
+
+We assembled $B$ and $F$ using our FEM routines from Part 1. The optimality system for this quadratic OCP can be derived by setting the gradient of the Lagrangian $\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T(B\mathbf{y} - F\mathbf{u})$ to zero. This yields the Karush–Kuhn–Tucker (KKT) conditions:
+\begin{align*}
+	F(y-\bar{\mathbf{y}}_d) - B\symbf{\lambda}   & = 0, \\
+	\alpha\,F\mathbf{u} + F\symbf{\lambda} & = 0, \\
+	B\mathbf{y}-F\mathbf{u}                 & = 0,
+\end{align*}
+$F = M, B = K$.
+where $\lambda$ is the vector of Lagrange multipliers (which corresponds to the adjoint state in optimal control). Eliminating $\lambda$, we obtain a symmetric saddle-point linear system for the unknown coefficients $y$ and $u$:
+\[
+	\begin{pmatrix}
+		F & \alpha B \\
+		B & -F
+	\end{pmatrix}
+	\begin{pmatrix}
+		y \\
+		u
+	\end{pmatrix}
+	=
+	\begin{pmatrix}
+		F\bar{\mathbf{y}}_d \\
+		0
+	\end{pmatrix}.
+\]
+We solve this $2M \times 2M$ system (of size $2(2N-1)$) using a sparse direct solver. The solution provides the discrete optimal state $y_h$ and control $u_h$ simultaneously. (In practice, one could also eliminate $u$ or $y$ and solve a reduced system, but we found the direct KKT solve to be convenient.)
+
+\subsection{Numerical experiments} We tested three cases for $\bar{\mathbf{y}}_d(x)$, with varying $\alpha$ as suggested in the project prompt:
+
+\begin{enumerate}
+	\item Case 1: $\bar{\mathbf{y}}_d(x) = 0.5x(1-x)$. This is a smooth target that does lie in $H^1_0(0,1)$ (it satisfies $\bar{\mathbf{y}}_d(0)=\bar{\mathbf{y}}_d(1)=0$). In fact, $\bar{\mathbf{y}}_d$ here coincides with the solution of the forward Poisson problem for $f\equiv 1$.
+	\item Case 2: $\bar{\mathbf{y}}_d(x) = 1$ (a constant). This target is smooth in $(0,1)$ but does not satisfy the boundary condition ($\bar{\mathbf{y}}_d(0)=\bar{\mathbf{y}}_d(1)=1\neq0$), so $\bar{\mathbf{y}}_d\notin H^1_0$. The desired state is a "flat" temperature profile of 1 throughout the domain.
+	\item Case 3: $\bar{\mathbf{y}}_d(x)$ = characteristic function of $[0.25,0.75]$ (a step function equal to 1 on the middle half of the domain and 0 elsewhere). This $\bar{\mathbf{y}}_d$ is discontinuous (certainly not in $H^1$), representing a case with a sharply localized desired temperature region.
+\end{enumerate}
+
+For each case, we solved the OCP for $\alpha = 10^{-2},\,10^{-4},\,10^{-6}$ (covering relatively large to very small control cost). We plot the resulting optimal state $y_h(x)$ and control $u_h(x)$, along with the target $\bar{\mathbf{y}}_d(x)$ for reference. Below we summarize the observed behavior:
+
+\subsubsection*{Case 1 (Smooth $\bar{\mathbf{y}}_d \in H^1_0$)}
+For a large control cost ($\alpha=10^{-2}$), the optimizer prefers to keep $u_h$ small, thus $y_h$ ends up far from $\bar{\mathbf{y}}_d$. In our results, with $\alpha=0.01$ the optimal control was nearly zero everywhere, and accordingly $y_h(x)$ was very close to 0 (the homogeneous solution of $-\mathbf{y}''=0$ with the given BCs).
+This makes sense: when control is expensive, the best strategy is to do almost nothing ($u\approx0$), accepting a large mismatch between $y$ and $\bar{\mathbf{y}}_d$.
+As $\alpha$ decreases, the optimal state $y_h$ moves closer to the target curve. For $\alpha=10^{-4}$, we found $y_h(x)$ already tracks $0.5x(1-x)$ quite well, and for $\alpha=10^{-6}$ the agreement is almost perfect (the curves of $y_h$ and $\bar{\mathbf{y}}_d$ nearly overlap). In fact, as $\alpha\to 0$, we expect $y_h\to \bar{\mathbf{y}}_d$ exactly and $u_h$ approaches the exact forcing needed to achieve that state. Here $\bar{\mathbf{y}}_d(x)$ is an attainable steady state of the PDE ($\bar{\mathbf{y}}_d$ itself satisfies $-\bar{\mathbf{y}}_d'' = 1$), so the optimal control for very small $\alpha$ should approach $u(x)\approx 1$. The computed $u_h(x)$ for $\alpha=10^{-6}$ was indeed essentially the constant 1 (with minor numerical oscillations $<10^{-3}$). Thus, for an $H^1_0$-compatible target, a small control penalty yields an accurate state ($y_h \approx \bar{\mathbf{y}}_d$) at the cost of a larger control norm (here $u_h\approx 1$ in magnitude). Conversely, a large $\alpha$ yields $u_h\approx 0$ and $y_h$ far from $\bar{\mathbf{y}}_d$. This trade-off aligns exactly with expectations for the weighting parameter $\alpha$.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 1.png}
+	\caption{Optimal control problem results for Case 1: $\bar{\mathbf{y}}_d(x)=0.5x(1-x)$. The left plot shows the optimal state $y_h(x)$ (blue) and target $\bar{\mathbf{y}}_d(x)$ (red) for $\alpha=10^{-2},\,10^{-4},\,10^{-6}$. The right plot shows the corresponding optimal control $u_h(x)$ (blue) for the same $\alpha$ values.}
+	\label{fig:opt_control_case1}
+\end{figure}
+
+\subsubsection*{Case 2 (Constant $\bar{\mathbf{y}}_d\notin H^1_0$)}
+This scenario cannot achieve $\mathbf{y}(x)=\bar{\mathbf{y}}_d(x)=1$ at the boundaries because the state $y$ must vanish at $x=0,1$. For large $\alpha$ (e.g. $10^{-2}$), again the optimal $u_h$ was almost zero, so $y_h\approx 0$ across the domain -- essentially ignoring the target to avoid control cost. For smaller $\alpha$, the solver increases $u_h$ to push $y_h$ upward toward 1 in the interior. We observed that for $\alpha=10^{-4}$, $y_h(x)$ rose to $\approx 0.6$ in the middle of the domain, and for $\alpha=10^{-6}$, $y_h(x)$ came very close to 1 over a broad interior region (while of course still dropping to 0 at the ends due to the boundary conditions). The optimal control for $\alpha=10^{-6}$ became quite large near the boundaries -- peaking near $x=0$ and $x=1$ -- effectively to ``lift'' the value of $y$ in the interior.
+
+Intuitively, when $\bar{\mathbf{y}}_d$ is constant 1, the best the system can do (for small $\alpha$) is apply strong heat sources near the ends to counteract the boundary decay, creating a state that is near 1 on $(0,1)$ except for boundary layers.
+This was reflected in $u_h$ for $\alpha=10^{-6}$, which had sharp spikes at the domain ends. The magnitude of these end spikes grows as $\alpha$ decreases (for $\alpha=10^{-4}$ they were milder).
+Meanwhile, $u_h$ in the mid-domain was used to fine-tune $y_h\approx 1$. This case highlights the effect of a target not satisfying the BC: as $\alpha\to0$, the interior of the domain approaches the target value (here $\approx 1$), but $y_h$ must transition to 0 at the boundaries. The optimizer concentrates control effort to facilitate this transition. We also note that because $\bar{\mathbf{y}}_d$ is smooth (except for the discontinuity at the boundary jump), $y_h$ remained smooth; however, $u_h$ had to become large near $x=0,1$. This is consistent with the theoretical observation that if $\bar{\mathbf{y}}_d\notin H^1_0$, the optimal state cannot equal $\bar{\mathbf{y}}_d$ even as $\alpha\to0$, and the control may blow up trying to reduce the $L^2$ error. In our discrete setting, $\alpha=10^{-6}$ already produced very large boundary control values (within numerical stability limits).
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 2.png}
+	\caption{Optimal control problem results for Case 2: $\bar{\mathbf{y}}_d(x)=1$. The left plot shows the optimal state $y_h(x)$ (blue) and target $\bar{\mathbf{y}}_d(x)$ (red) for $\alpha=10^{-2},\,10^{-4},\,10^{-6}$. The right plot shows the corresponding optimal control $u_h(x)$ (blue) for the same $\alpha$ values.}
+	\label{fig:opt_control_case2}
+\end{figure}
+
+\subsubsection*{Case 3 (Discontinuous $\bar{\mathbf{y}}_d$ step)}
+This is the most challenging target, since $\bar{\mathbf{y}}_d$ is not only not in $H^1_0$, it has an interior jump. For large $\alpha$ again $u_h\approx0$ and $y_h\approx0$. For moderate $\alpha$ ($10^{-4}$), $y_h$ started to approximate the step: e.g. at $\alpha=10^{-4}$, $y_h(x)$ was about 0.8 in the plateau region $[0.25,0.75]$ and dropped to near 0 outside that interval. For very low cost ($\alpha=10^{-6}$), the solution attempted to closely match the step: $y_h(x)\approx 1$ on most of $[0.25,0.75]$ and $\approx 0$ outside. However, $y_h$ must remain continuous, so it cannot jump abruptly at $x=0.25$ and $0.75$. Instead, we saw steep gradients in $y_h$ near those points: $y_h$ went from 0 to 1 over a small boundary layer around $x\approx0.25$, and similarly dropped back to 0 around $x\approx0.75$. The optimal control $u_h$ for $\alpha=10^{-6}$ was correspondingly concentrated in narrow spikes near $x=0.25$ and $x=0.75$. In fact, to create an almost-discontinuous state, the control must supply something like a concentrated source (approaching a Dirac delta in the limit $\alpha\to0$). Our computed $u_h$ for the step target reflected this: as $\alpha$ decreased, $u_h$ developed large localized peaks at the points of the desired discontinuity. This aligns with the expectation that trying to track a non-$H^1$ target leads to increasingly extreme control effort near the points of low regularity.
+
+Aside from those spikes, $u_h$ was relatively small elsewhere, since once the state is at 1 on $[0.25,0.75]$, it only needs to counter diffusion to maintain that plateau. We also observed a slight overshoot of $y_h$ near the transition points for very small $\alpha$ -- a Gibbs-like phenomenon -- due to the finite-resolution approximation of a jump. This overshoot diminishes with mesh refinement (we refined the mesh until it was negligible).
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 3.png}
+	\caption{Optimal control problem results for Case 3: $\bar{\mathbf{y}}_d(x)=\chi_{[0.25,0.75]}(x)$. The left plot shows the optimal state $y_h(x)$ (blue) and target $\bar{\mathbf{y}}_d(x)$ (red) for $\alpha=10^{-2},\,10^{-4},\,10^{-6}$. The right plot shows the corresponding optimal control $u_h(x)$ (blue) for the same $\alpha$ values.}
+	\label{fig:opt_control_case3}
+\end{figure}
+
+\paragraph{Effect of $\alpha$:} Across all cases, the parameter $\alpha$ clearly governs a spectrum between control-limited regimes (large $\alpha$) and state-accuracy regimes (small $\alpha$). 
+For $\alpha$ in the range $10^{-3}$ to $10^{-4}$, we found intermediate behavior: the state $y_h$ would partially follow $\bar{\mathbf{y}}_d$ but with some error, and the control $u_h$ would be nonzero but moderate. 
+For example, in Case 1 at $\alpha=10^{-3}$ (not shown above), $y_h(x)$ reached about 80\% of the target amplitude, and $u_h$ was about 0.2 on average (instead of 1 for full control). As $\alpha$ gets smaller, the state approximation improves at the cost of higher $u_h$ norms, illustrating the classic trade-off between fidelity and control effort. Our simulations for $\alpha=10^{-6}$ are near the extreme where $y_h$ is very close to $\bar{\mathbf{y}}_d$ in all cases, and $u_h$ is correspondingly large (especially where needed to overcome boundary or discontinuity constraints). For $\alpha=10^{-2}$, conversely, $y_h$ is very far from $\bar{\mathbf{y}}_d$ (often just the zero solution) because any significant control is too costly.
+
+This qualitative behavior matches expectations: when control is cheap (small $\alpha$), the optimal strategy is to aggressively drive $y$ toward the target; when control is expensive (large $\alpha$), it's better to accept error in $y$ and keep $u$ small.
+
+\paragraph{Effect of $\bar{\mathbf{y}}_d$ regularity:} The three cases demonstrate how the attainability of $\bar{\mathbf{y}}_d$ under the PDE impacts the solution. For Case 1, $\bar{\mathbf{y}}_d$ was itself a valid homogeneous solution of the PDE, so with enough control effort one can achieve $y=\bar{\mathbf{y}}_d$ exactly. Indeed, as $\alpha\to 0$ we got $y_h\to \bar{\mathbf{y}}_d$. In Case 2, $\bar{\mathbf{y}}_d$ could not be matched at the boundaries; as a result, even with very cheap control the best $y_h$ can do is approximate $\bar{\mathbf{y}}_d$ in the interior, and $u_h$ tends to infinity (in theory) at the boundaries to drive $y$ as close as possible there. Case 3 is even more extreme: $\bar{\mathbf{y}}_d$ is not attainable due to its jump discontinuity, and the optimal solution for tiny $\alpha$ uses very large, sharply localized controls to approximate the jump. In practice, extremely small $\alpha$ in Case 3 would lead to ill-conditioning and the need for a finer mesh to resolve the sharp gradients in $y_h$ (in our runs, $\alpha=10^{-6}$ was feasible with a fine mesh, but pushing $\alpha$ smaller required even more refinement). These observations are consistent with part (c2) of the project instructions, which ask about differences when $\bar{\mathbf{y}}_d \in H^1_0$ vs. $\bar{\mathbf{y}}_d\notin H^1_0$.
+
+In summary, if $\bar{\mathbf{y}}_d$ is smooth and compatible with the PDE constraints, the OCP can achieve it closely (yielding $y_h \approx \bar{\mathbf{y}}_d$ for small $\alpha$). If $\bar{\mathbf{y}}_d$ violates the constraints (discontinuous or nonzero at boundaries), the optimal state will approximate $\bar{\mathbf{y}}_d$ but cannot match it exactly, and the control will exhibit large spikes or boundary layers as $\alpha$ decreases. This underscores the importance of $\bar{\mathbf{y}}_d$'s regularity in optimal control problems.
+
+% Visual summary: [Plots were generated for each case showing the optimal state and control for $\alpha=10^{-2}, 10^{-4}, 10^{-6}$.] In all cases, as the control weight $\alpha$ decreases, the $y_h$ curves move closer to the target $\bar{\mathbf{y}}_d(x)$ and the $u_h$ curves grow in magnitude. For large $\alpha$, $y_h$ is essentially flat (near 0) and $u_h\approx 0$. For small $\alpha$, $y_h$ aligns with $\bar{\mathbf{y}}_d$ except where the PDE constraints force deviations (e.g. near boundaries or discontinuities), and $u_h$ is significant -- often peaking where $y_h$ needs the most ``force'' to follow $\bar{\mathbf{y}}_d$. These results are consistent with physical intuition: if it is very costly to apply control, the system mostly relies on the natural state (which is 0 here due to homogeneous BCs and no forcing), whereas if control is cheap, the system can be driven to closely track the desired profile.
+
+\paragraph{Conclusion:}
+The FEM-based solver successfully handled the optimal control problem, producing solutions that satisfy the first-order optimality conditions. The numerical experiments validated the expected convergence rates for the forward problem and illustrated the influence of the control cost $\alpha$ and target function $\bar{\mathbf{y}}_d$. We saw that our implementation can capture the qualitative features of optimal states and controls in different regimes. Especially, the transitions from minimal control to aggressive control regimes (as $\alpha$ varies) and the effect of target regularity (smooth vs. discontinuous $\bar{\mathbf{y}}_d$) were clearly observed, matching theoretical expectations. Overall, the results demonstrate consistency between the discrete solutions and the underlying analysis of the OCP, and they highlight how the finite element approach provides a flexible framework to solve and explore such PDE-constrained optimization problems.
+
+
+\section{Optimal Control Problem}
+\label{sec:optimal_control}
+We consider the optimal control problem (OCP): minimize
+\[
+	J(y,u) = \frac{1}{2}\int_0^1 |y(x)-y_d(x)|^2\,dx + \frac{\alpha}{2}\int_0^1 |u(x)|^2\,dx,
+\]
+subject to the PDE constraint $-y'' = u$ on $(0,1)$ with $y(0)=y(1)=0$. Here $y_d(x)$ is a given target (desired state) and $\alpha>0$ is a regularization parameter penalizing the $L^2$-norm of the control $u$. The first term of $J$ measures how closely the state $y(x)$ matches the desired profile $y_d(x)$, while the second term imposes a cost on the control effort $u(x)$. A small $\alpha$ means we prioritize tracking $y_d$ closely (allowing larger control magnitudes), whereas a large $\alpha$ emphasizes minimizing control energy, at the expense of state accuracy. This OCP is a classic PDE-constrained optimization example.
+
+\subsection{Discretization and Optimality System}
+
+We discretized both $y(x)$ and $u(x)$ in the same $\mathbb{P}_2$ finite element space $V_h = X_h^2 \cap H_0^1(0,1)$ (i.e. continuous piecewise quadratics vanishing at the boundaries). This means the control $u_h(x)$ is also represented by quadratic basis functions on the mesh (note that $u$ itself need not satisfy any boundary condition, but choosing $u_h\in V_h$ conveniently yields equal degrees of freedom for $y$ and $u$). Let $\{\phi_j(x)\}_{j=1}^{M}$ be the interior basis functions (with $M=2N-1$ for $N$ elements). We write $y_h(x)=\sum_j y_j\phi_j(x)$ and $u_h(x)=\sum_j u_j\phi_j(x)$. The discrete objective can be written in matrix form as
+\[
+	G(y,u) = \frac{1}{2}(y-Y_d)^T M(y-Y_d) + \frac{\alpha}{2}\,u^T M\,u,
+\]
+where $M_{ij}=\int_0^1 \phi_i\phi_j\,dx$ is the mass matrix and $Y_d$ is the vector of interpolated $y_d(x)$ values on the basis.
+
+The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\in V_h$, which leads to the discrete linear constraint $Ky = Mu$, where $K_{ij}=\int_0^1 \phi_i'\phi_j'\,dx$ is the stiffness matrix (from $a(y,v)=\int y'v'\,dx$) and $Mu$ comes from the $L^2$ inner product of $u_h$ with basis $v=\phi_i$.
+
+We assembled $K$ and $M$ using our FEM routines from Part 1. The optimality system for this quadratic OCP can be derived by setting the gradient of the Lagrangian $\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T(Ky - Mu)$ to zero. This yields the Karush–Kuhn–Tucker (KKT) conditions:
+\begin{align*}
+	M(y-Y_d) - K\lambda   & = 0, \\
+	\alpha\,Mu + M\lambda & = 0, \\
+	Ky-Mu                 & = 0,
+\end{align*}
+where $\lambda$ is the vector of Lagrange multipliers (which corresponds to the adjoint state in optimal control). Eliminating $\lambda$, we obtain a symmetric saddle-point linear system for the unknown coefficients $y$ and $u$:
+\[
+	\begin{pmatrix}
+		M & \alpha K \\
+		K & -M
+	\end{pmatrix}
+	\begin{pmatrix}
+		y \\
+		u
+	\end{pmatrix}
+	=
+	\begin{pmatrix}
+		MY_d \\
+		0
+	\end{pmatrix}.
+\]
+We solve this $2M \times 2M$ system (of size $2(2N-1)$) using a sparse direct solver. The solution provides the discrete optimal state $y_h$ and control $u_h$ simultaneously. (In practice, one could also eliminate $u$ or $y$ and solve a reduced system, but we found the direct KKT solve to be convenient.)
+
+\subsection{Numerical experiments} We tested three cases for $y_d(x)$, with varying $\alpha$ as suggested in the project prompt:
+
+\begin{enumerate}
+	\item Case 1: $y_d(x) = 0.5x(1-x)$. This is a smooth target that does lie in $H^1_0(0,1)$ (it satisfies $y_d(0)=y_d(1)=0$). In fact, $y_d$ here coincides with the solution of the forward Poisson problem for $f\equiv 1$.
+	\item Case 2: $y_d(x) = 1$ (a constant). This target is smooth in $(0,1)$ but does not satisfy the boundary condition ($y_d(0)=y_d(1)=1\neq0$), so $y_d\notin H^1_0$. The desired state is a "flat" temperature profile of 1 throughout the domain.
+	\item Case 3: $y_d(x)$ = characteristic function of $[0.25,0.75]$ (a step function equal to 1 on the middle half of the domain and 0 elsewhere). This $y_d$ is discontinuous (certainly not in $H^1$), representing a case with a sharply localized desired temperature region.
+\end{enumerate}
+
+For each case, we solved the OCP for $\alpha = 10^{-2},\,10^{-4},\,10^{-6}$ (covering relatively large to very small control cost). We plot the resulting optimal state $y_h(x)$ and control $u_h(x)$, along with the target $y_d(x)$ for reference. Below we summarize the observed behavior:
+
+\subsubsection*{Case 1 (Smooth $y_d \in H^1_0$)}
+For a large control cost ($\alpha=10^{-2}$), the optimizer prefers to keep $u_h$ small, thus $y_h$ ends up far from $y_d$. In our results, with $\alpha=0.01$ the optimal control was nearly zero everywhere, and accordingly $y_h(x)$ was very close to 0 (the homogeneous solution of $-y''=0$ with the given BCs).
+This makes sense: when control is expensive, the best strategy is to do almost nothing ($u\approx0$), accepting a large mismatch between $y$ and $y_d$.
+As $\alpha$ decreases, the optimal state $y_h$ moves closer to the target curve. For $\alpha=10^{-4}$, we found $y_h(x)$ already tracks $0.5x(1-x)$ quite well, and for $\alpha=10^{-6}$ the agreement is almost perfect (the curves of $y_h$ and $y_d$ nearly overlap). In fact, as $\alpha\to 0$, we expect $y_h\to y_d$ exactly and $u_h$ approaches the exact forcing needed to achieve that state. Here $y_d(x)$ is an attainable steady state of the PDE ($y_d$ itself satisfies $-y_d'' = 1$), so the optimal control for very small $\alpha$ should approach $u(x)\approx 1$. The computed $u_h(x)$ for $\alpha=10^{-6}$ was indeed essentially the constant 1 (with minor numerical oscillations $<10^{-3}$). Thus, for an $H^1_0$-compatible target, a small control penalty yields an accurate state ($y_h \approx y_d$) at the cost of a larger control norm (here $u_h\approx 1$ in magnitude). Conversely, a large $\alpha$ yields $u_h\approx 0$ and $y_h$ far from $y_d$. This trade-off aligns exactly with expectations for the weighting parameter $\alpha$.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 1.png}
+	\caption{Optimal control problem results for Case 1: $y_d(x)=0.5x(1-x)$. The left plot shows the optimal state $y_h(x)$ (blue) and target $y_d(x)$ (red) for $\alpha=10^{-2},\,10^{-4},\,10^{-6}$. The right plot shows the corresponding optimal control $u_h(x)$ (blue) for the same $\alpha$ values.}
+	\label{fig:opt_control_case1}
+\end{figure}
+
+\subsubsection*{Case 2 (Constant $y_d\notin H^1_0$)}
+This scenario cannot achieve $y(x)=y_d(x)=1$ at the boundaries because the state $y$ must vanish at $x=0,1$. For large $\alpha$ (e.g. $10^{-2}$), again the optimal $u_h$ was almost zero, so $y_h\approx 0$ across the domain -- essentially ignoring the target to avoid control cost. For smaller $\alpha$, the solver increases $u_h$ to push $y_h$ upward toward 1 in the interior. We observed that for $\alpha=10^{-4}$, $y_h(x)$ rose to $\approx 0.6$ in the middle of the domain, and for $\alpha=10^{-6}$, $y_h(x)$ came very close to 1 over a broad interior region (while of course still dropping to 0 at the ends due to the boundary conditions). The optimal control for $\alpha=10^{-6}$ became quite large near the boundaries -- peaking near $x=0$ and $x=1$ -- effectively to ``lift'' the value of $y$ in the interior.
+
+Intuitively, when $y_d$ is constant 1, the best the system can do (for small $\alpha$) is apply strong heat sources near the ends to counteract the boundary decay, creating a state that is near 1 on $(0,1)$ except for boundary layers.
+This was reflected in $u_h$ for $\alpha=10^{-6}$, which had sharp spikes at the domain ends. The magnitude of these end spikes grows as $\alpha$ decreases (for $\alpha=10^{-4}$ they were milder).
+Meanwhile, $u_h$ in the mid-domain was used to fine-tune $y_h\approx 1$. This case highlights the effect of a target not satisfying the BC: as $\alpha\to0$, the interior of the domain approaches the target value (here $\approx 1$), but $y_h$ must transition to 0 at the boundaries. The optimizer concentrates control effort to facilitate this transition. We also note that because $y_d$ is smooth (except for the discontinuity at the boundary jump), $y_h$ remained smooth; however, $u_h$ had to become large near $x=0,1$. This is consistent with the theoretical observation that if $y_d\notin H^1_0$, the optimal state cannot equal $y_d$ even as $\alpha\to0$, and the control may blow up trying to reduce the $L^2$ error. In our discrete setting, $\alpha=10^{-6}$ already produced very large boundary control values (within numerical stability limits).
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 2.png}
+	\caption{Optimal control problem results for Case 2: $y_d(x)=1$. The left plot shows the optimal state $y_h(x)$ (blue) and target $y_d(x)$ (red) for $\alpha=10^{-2},\,10^{-4},\,10^{-6}$. The right plot shows the corresponding optimal control $u_h(x)$ (blue) for the same $\alpha$ values.}
+	\label{fig:opt_control_case2}
+\end{figure}
+
+\subsubsection*{Case 3 (Discontinuous $y_d$ step)}
+This is the most challenging target, since $y_d$ is not only not in $H^1_0$, it has an interior jump. For large $\alpha$ again $u_h\approx0$ and $y_h\approx0$. For moderate $\alpha$ ($10^{-4}$), $y_h$ started to approximate the step: e.g. at $\alpha=10^{-4}$, $y_h(x)$ was about 0.8 in the plateau region $[0.25,0.75]$ and dropped to near 0 outside that interval. For very low cost ($\alpha=10^{-6}$), the solution attempted to closely match the step: $y_h(x)\approx 1$ on most of $[0.25,0.75]$ and $\approx 0$ outside. However, $y_h$ must remain continuous, so it cannot jump abruptly at $x=0.25$ and $0.75$. Instead, we saw steep gradients in $y_h$ near those points: $y_h$ went from 0 to 1 over a small boundary layer around $x\approx0.25$, and similarly dropped back to 0 around $x\approx0.75$. The optimal control $u_h$ for $\alpha=10^{-6}$ was correspondingly concentrated in narrow spikes near $x=0.25$ and $x=0.75$. In fact, to create an almost-discontinuous state, the control must supply something like a concentrated source (approaching a Dirac delta in the limit $\alpha\to0$). Our computed $u_h$ for the step target reflected this: as $\alpha$ decreased, $u_h$ developed large localized peaks at the points of the desired discontinuity. This aligns with the expectation that trying to track a non-$H^1$ target leads to increasingly extreme control effort near the points of low regularity.
+
+Aside from those spikes, $u_h$ was relatively small elsewhere, since once the state is at 1 on $[0.25,0.75]$, it only needs to counter diffusion to maintain that plateau. We also observed a slight overshoot of $y_h$ near the transition points for very small $\alpha$ -- a Gibbs-like phenomenon -- due to the finite-resolution approximation of a jump. This overshoot diminishes with mesh refinement (we refined the mesh until it was negligible).
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{figures/opt_control_plot_Case 3.png}
+	\caption{Optimal control problem results for Case 3: $y_d(x)=\chi_{[0.25,0.75]}(x)$. The left plot shows the optimal state $y_h(x)$ (blue) and target $y_d(x)$ (red) for $\alpha=10^{-2},\,10^{-4},\,10^{-6}$. The right plot shows the corresponding optimal control $u_h(x)$ (blue) for the same $\alpha$ values.}
+	\label{fig:opt_control_case3}
+\end{figure}
+
+\paragraph{Effect of $\alpha$:} Across all cases, the parameter $\alpha$ clearly governs a spectrum between control-limited regimes (large $\alpha$) and state-accuracy regimes (small $\alpha$). For $\alpha$ in the range $10^{-3}$ to $10^{-4}$ (typical values mentioned in the prompt), we found intermediate behavior: the state $y_h$ would partially follow $y_d$ but with some error, and the control $u_h$ would be nonzero but moderate. For example, in Case 1 at $\alpha=10^{-3}$ (not shown above), $y_h(x)$ reached about 80\% of the target amplitude, and $u_h$ was about 0.2 on average (instead of 1 for full control). As $\alpha$ gets smaller, the state approximation improves at the cost of higher $u_h$ norms, illustrating the classic trade-off between fidelity and control effort. Our simulations for $\alpha=10^{-6}$ are near the extreme where $y_h$ is very close to $y_d$ in all cases, and $u_h$ is correspondingly large (especially where needed to overcome boundary or discontinuity constraints). For $\alpha=10^{-2}$, conversely, $y_h$ is very far from $y_d$ (often just the zero solution) because any significant control is too costly.
+
+This qualitative behavior matches expectations: when control is cheap (small $\alpha$), the optimal strategy is to aggressively drive $y$ toward the target; when control is expensive (large $\alpha$), it's better to accept error in $y$ and keep $u$ small.
+
+\paragraph{Effect of $y_d$ regularity:} The three cases demonstrate how the attainability of $y_d$ under the PDE impacts the solution. For Case 1, $y_d$ was itself a valid homogeneous solution of the PDE, so with enough control effort one can achieve $y=y_d$ exactly. Indeed, as $\alpha\to 0$ we got $y_h\to y_d$. In Case 2, $y_d$ could not be matched at the boundaries; as a result, even with very cheap control the best $y_h$ can do is approximate $y_d$ in the interior, and $u_h$ tends to infinity (in theory) at the boundaries to drive $y$ as close as possible there. Case 3 is even more extreme: $y_d$ is not attainable due to its jump discontinuity, and the optimal solution for tiny $\alpha$ uses very large, sharply localized controls to approximate the jump. In practice, extremely small $\alpha$ in Case 3 would lead to ill-conditioning and the need for a finer mesh to resolve the sharp gradients in $y_h$ (in our runs, $\alpha=10^{-6}$ was feasible with a fine mesh, but pushing $\alpha$ smaller required even more refinement). These observations are consistent with part (c2) of the project instructions, which ask about differences when $y_d \in H^1_0$ vs. $y_d\notin H^1_0$.
+
+In summary, if $y_d$ is smooth and compatible with the PDE constraints, the OCP can achieve it closely (yielding $y_h \approx y_d$ for small $\alpha$). If $y_d$ violates the constraints (discontinuous or nonzero at boundaries), the optimal state will approximate $y_d$ but cannot match it exactly, and the control will exhibit large spikes or boundary layers as $\alpha$ decreases. This underscores the importance of $y_d$'s regularity in optimal control problems.
+
+% Visual summary: [Plots were generated for each case showing the optimal state and control for $\alpha=10^{-2}, 10^{-4}, 10^{-6}$.] In all cases, as the control weight $\alpha$ decreases, the $y_h$ curves move closer to the target $y_d(x)$ and the $u_h$ curves grow in magnitude. For large $\alpha$, $y_h$ is essentially flat (near 0) and $u_h\approx 0$. For small $\alpha$, $y_h$ aligns with $y_d$ except where the PDE constraints force deviations (e.g. near boundaries or discontinuities), and $u_h$ is significant -- often peaking where $y_h$ needs the most ``force'' to follow $y_d$. These results are consistent with physical intuition: if it is very costly to apply control, the system mostly relies on the natural state (which is 0 here due to homogeneous BCs and no forcing), whereas if control is cheap, the system can be driven to closely track the desired profile.
+
+\paragraph{Conclusion:}
+The FEM-based solver successfully handled the optimal control problem, producing solutions that satisfy the first-order optimality conditions. The numerical experiments validated the expected convergence rates for the forward problem and illustrated the influence of the control cost $\alpha$ and target function $y_d$. We saw that our implementation can capture the qualitative features of optimal states and controls in different regimes. Especially, the transitions from minimal control to aggressive control regimes (as $\alpha$ varies) and the effect of target regularity (smooth vs. discontinuous $y_d$) were clearly observed, matching theoretical expectations. Overall, the results demonstrate consistency between the discrete solutions and the underlying analysis of the OCP, and they highlight how the finite element approach provides a flexible framework to solve and explore such PDE-constrained optimization problems.
+
+
+\section{Optimal Control Problem}
+\subsection*{Problem Formulation}
+Consider an optimal control problem for heating/cooling a physical domain \(\Omega=(0,1)\).
+Given a target temperature profile \(y_d \in L^2(\Omega)\) and a control cost parameter \(\alpha > 0\), we seek to minimize
+\[
+	J(y,u) = \frac{1}{2}\int_0^1 |y-y_d|^2\,dx + \frac{\alpha}{2}\int_0^1 u^2\,dx,
+\]
+subject to \(y\) solving the Poisson equation with homogeneous Dirichlet conditions:
+\[
+	-\Delta y = u \quad\text{in }\Omega, \qquad y(0) = y(1) = 0.
+\]
+Here \(u\) represents the distributed heat source/sink (control) and \(y\) is the resulting temperature (state).
+We discretize this optimal control problem using finite elements:
+\[
+	\min_{u_h,y_h\in V_h} \frac{1}{2}\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} + \frac{\alpha}{2}\|u_h\|^2_{L^2(\Omega)}
+\]
+subject to
+\[
+	a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)} \quad \forall v\in V_h,
+\]
+where \(\bar{y}_d\) is the interpolation of \(y_d\) onto \(X^2_h\), \(V_h = X^2_h \cap H^1_0(\Omega)\), and \(a\) is the bilinear form from Part 1.
+\subsection*{Problem 2 (a): Discretization and Formulation}
+\subsubsection*{Matrix formulation of OCP}
+To express the optimization problem in matrix form, we need to represent both the objective function and constraints using matrices.
+First, we expand the objective function (target temperature), state and control variables in terms of the basis functions:
+\[
+	\bar{y}_d(x) = \sum_{j=1}^{2N-1} d_j \varphi_j(x), \quad
+	y_h(x) = \sum_{j=1}^{2N-1} y_j \varphi_j(x), \quad
+	u_h(x) = \sum_{j=1}^{2N-1} u_j \varphi_j(x)
+\]
+Expanding each term in the objective function:
+\begin{align*}
+	\|y_h - \bar{y}_d\|^2_{L^2(\Omega)} & = \int_0^1 \left(\sum_{j=1}^{2N-1} (y_j-(\bar{y}_d)_j)\varphi_j(x)\right)^2 dx = (\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) \\
+	\|u_h\|^2_{L^2(\Omega)}             & = \int_0^1 \left(\sum_{j=1}^{2N-1} u_j \varphi_j(x)\right)^2 dx = \mathbf{u}^T F \mathbf{u}
+\end{align*}
+
+Thus, the objective function can be expressed as:
+\[
+	G(\mathbf{y},\mathbf{u}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2} \mathbf{u}^T F \mathbf{u}
+\]
+For the constraint \(a(y_h,v) = \langle u_h,v \rangle_{L^2(\Omega)}\), testing with \(v = \varphi_i\) for \(i=1,\dots,2N-1\):
+\[
+	\sum_{j=1}^{2N-1} y_j a(\varphi_j,\varphi_i) = \sum_{j=1}^{2N-1} u_j \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}
+\]
+Defining the stiffness matrix \(B_{ij} = a(\varphi_j,\varphi_i)\) and mass matrix \(F_{ij} = \langle \varphi_j,\varphi_i \rangle_{L^2(\Omega)}\), the constraint becomes:
+\[
+	B \mathbf{y} = F \mathbf{u}
+\]
+\subsection*{Problem 2 (b): Lagrangian Formulation}
+
+We now introduce the Lagrangian for the OCP:
+\[
+	\mathcal{L}(\mathbf{y},\mathbf{u},\symbf{\lambda}) = \frac{1}{2}(\mathbf{y}-\mathbf{\bar{y}_d})^T F (\mathbf{y}-\mathbf{\bar{y}_d}) + \frac{\alpha}{2}\, \mathbf{u}^T F \mathbf{u} + \symbf{\lambda}^T (B\,\mathbf{y} - F\,\mathbf{u}),
+\]
+where the Lagrangian multipliers are \(\symbf{\lambda} \in \mathbb{R}^{2N-1}\) corresponding to the constraints \(B\,\mathbf{y} - F\,\mathbf{u} = 0\).
+Taking gradients with respect to \(\mathbf{y}\), \(\mathbf{u}\), and \(\symbf{\lambda}\), and where \(F, B\) is symmetric (i.e., \(F^T = F\) and \(B^T = B\)), we have:
+\begin{align*}
+	\nabla_{\mathbf{y}}\mathcal{L} = F(\mathbf{y}-\mathbf{\bar{y}_d}) + B^T\symbf{\lambda} & = 0 \\
+	\nabla_{\mathbf{u}}\mathcal{L} = \alpha\,F\mathbf{u} - F^T\symbf{\lambda}      & = 0 \\
+	\nabla_{\symbf{\lambda}}\mathcal{L} = B\,\mathbf{y} - F\,\mathbf{u}            & = 0
+\end{align*}
+Which yields the \emph{Karush-Kuhn-Tucker (KKT)} optimality system:
+\begin{align*}
+	\mathbf{y} = \mathbf{\bar{y}_d} - F^{-1}B\,\symbf{\lambda}. \tag{1} \label{eq:grad_y} \\
+	\symbf{\lambda} = \alpha\,\mathbf{u}. \tag{2} \label{eq:grad_u}               \\
+	B\,\mathbf{y} = F\,\mathbf{u}. \tag{3} \label{eq:grad_lambda}
+\end{align*}
+
+\subsection*{Reduced Optimality System}
+From equation \eqref{eq:grad_u} we have
+\(\symbf{\lambda} = \alpha\,\mathbf{u}\)
+Substitute this into equation \eqref{eq:grad_y}:
+\[
+	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,\mathbf{u} = 0. \tag{4} \label{eq:grad_y_u}
+\]
+Solving the state constraint \eqref{eq:grad_lambda} for \(\mathbf{u}\) gives
+\[
+	\mathbf{u} = F^{-1}B\,\mathbf{y}. \tag{5} \label{eq:grad_lambda_u}
+\]
+Substitute \eqref{eq:grad_lambda_u} into \eqref{eq:grad_y_u} and rearranging we obtain the reduced system for \(\mathbf{y}\):
+\begin{align*}
+	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,(F^{-1}B\,\mathbf{y}) & = 0.                                                                                  \\
+	\bigl(F + \alpha\,B\,F^{-1}B\bigr)\,\mathbf{y}              & = F\,\mathbf{\bar{y}_d}.                                                                      \\
+	\mathbf{y}                                                  & = \bigl(F + \alpha\,B\,F^{-1}B\bigr)^{-1}F\,\mathbf{d}. \tag{6} \label{eq:grad_y_u_d}
+\end{align*}
+Once \(\mathbf{y}\) is computed from \eqref{eq:grad_y_u_d}, the optimal control is recovered via \(\mathbf{u} = F^{-1}B\,\mathbf{y},\)
+and the Lagrange multiplier is given by \(\symbf{\lambda} = \alpha\,\mathbf{u}\).

@@ -419,7 +419,7 @@ The $H^1$ error decreases from $\mathcal{O}(10^{-2})$ with $N=5$ elements to $\m
 
 \section{Optimal Control Problem}
 \label{sec:optimal_control}
-\subsection*{Problem Formulation}
+\subsection{Problem Formulation}
 We consider an optimal control problem for heating/cooling a physical domain \(\Omega=(0,1)\).
 Given a target temperature profile \(y_d \in L^2(\Omega)\) and a control cost parameter \(\alpha > 0\), we seek to minimize
 \[
@@ -443,7 +443,7 @@ where \(\bar{y}_d\) is the interpolation of \(y_d\) onto \(X^2_h\), \(V_h = X^2_
 \subsection{Discretization of the OCP}
 First, we expand the objective function, state and control variables in terms of the discrete basis functions:
 \[
-	\bar{y}_d(x) = \sum_{j=1}^{2N-1} d_j \varphi_j(x), \quad
+	\bar{y}_d(x) = \sum_{j=1}^{2N-1} (\bar{y}_d)_j \varphi_j(x), \quad
 	y_h(x) = \sum_{j=1}^{2N-1} y_j \varphi_j(x), \quad
 	u_h(x) = \sum_{j=1}^{2N-1} u_j \varphi_j(x)
 \]

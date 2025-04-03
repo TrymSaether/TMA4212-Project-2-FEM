@@ -144,7 +144,10 @@ def plot_opt_control_multi(alphas, n_vals, yd, fine_mesh=200, savefig=False, nam
     for alpha in alphas:
         x_int, y_int, u_int = solver_fine.solve_opt_control(alpha, yd)
         u_full = np.zeros_like(solver_fine.nodes)
-        u_full[1:-1] = y_int
+        u_full[1:-1] = u_int
+        y_full = np.zeros_like(solver_fine.nodes)
+        y_full[1:-1] = y_int
+        axs[0].plot(solver_fine.nodes, y_full, marker='o', linestyle='-', label=f'$\\alpha = {alpha}$')
         axs[0].plot(solver_fine.nodes, u_full, marker='o', linestyle='-', label=f'$\\alpha = {alpha}$')
 
     x_fine = np.linspace(0, 1, fine_mesh)
@@ -158,7 +161,7 @@ def plot_opt_control_multi(alphas, n_vals, yd, fine_mesh=200, savefig=False, nam
     # --- Right Panel: Control solutions ---
     for alpha in alphas:
         x_int, y_int, u_int = solver_fine.solve_opt_control(alpha, yd)
-        axs[1].plot(x_int, u_int, marker='o', linestyle='-', label=f'$\\alpha = {alpha}$')
+        axs[1].plot(x_int, u_int,'-o', label=f'$\\alpha = {alpha}$')
     axs[1].set_title('Control Solutions')
     axs[1].set_xlabel('$x$')
     axs[1].set_ylabel('Control $u(x)$')

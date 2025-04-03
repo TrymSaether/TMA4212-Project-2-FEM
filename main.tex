@@ -364,6 +364,7 @@ whose exact solution is \(u(x) = \tfrac12\,x(1-x)\).
 Note that since the exact solution is quadratic means our P2 elements should represent it perfectly.
 With Simpson's rule integration, $u_h(x)$ theoretically matches $u(x)$ exactly.
 In practice, we observe slight errors on finer meshes due to floating-point roundoff in the larger linear systems.
+\subsubsection*{Complex Example with Non-Uniform Mesh}
 
 \subsection{Theoretical Error Analysis and Convergence Rate}
 Table~\ref{tab:convergence_fancy} illustrates that our numerical results match
@@ -407,11 +408,11 @@ We discretized both $y(x)$ and $u(x)$ in the same $\mathbb{P}_2$ finite element 
 \[
 	G(y,u) = \frac{1}{2}(y-Y_d)^T M(y-Y_d) + \frac{\alpha}{2}\,u^T M\,u,
 \]
-where $M_{ij}=\int_0^1 \phi_i\phi_j\,dx$ is the mass matrix and $Y_d$ is the vector of interpolated $y_d(x)$ values on the basis.
+where $M_{ij}=\int_0^1 \phi_i\phi_j\,dx$ is the mass matrix and $Y_d$ is the vector of interpolated $y_d(x)$ values on the basis. $B = K, M = F$
 
-The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\in V_h$, which leads to the discrete linear constraint $Ky = Mu$, where $A_{ij}=\int_0^1 \phi_i'\phi_j'\,dx$ is the stiffness matrix (from $a(y,v)=\int y'v'\,dx$) and $Mu$ comes from the $L^2$ inner product of $u_h$ with basis $v=\phi_i$.
+The PDE constraint in weak form is $a(y_h,v) = \int_0^1 u_h\,v\,dx$ for all $v\in V_h$, which leads to the discrete linear constraint $By = Ku$, where $B_{ij}=\int_0^1 \phi_i'\phi_j'\,dx$ is the stiffness matrix (from $a(y,v)=\int y'v'\,dx$) and $Mu$ comes from the $L^2$ inner product of $u_h$ with basis $v=\phi_i$.
 
-We assembled $K$ and $M$ using our FEM routines from Part 1. The optimality system for this quadratic OCP can be derived by setting the gradient of the Lagrangian $\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T(Ky - Mu)$ to zero. This yields the Karush–Kuhn–Tucker (KKT) conditions:
+We assembled $B$ and $F$ using our FEM routines from Part 1. The optimality system for this quadratic OCP can be derived by setting the gradient of the Lagrangian $\mathcal{L}(y,u,\lambda) = G(y,u) - \lambda^T(Ky - Mu)$ to zero. This yields the Karush–Kuhn–Tucker (KKT) conditions:
 \begin{align*}
 	M(y-Y_d) - K\lambda   & = 0, \\
 	\alpha\,Mu + M\lambda & = 0, \\
@@ -577,7 +578,7 @@ Substitute \eqref{eq:grad_lambda_u} into \eqref{eq:grad_y_u} and rearranging we 
 \begin{align*}
 	F(\mathbf{y}-\mathbf{\bar{y}_d}) + \alpha\,B\,(F^{-1}B\,\mathbf{y}) & = 0.                                                                                  \\
 	\bigl(F + \alpha\,B\,F^{-1}B\bigr)\,\mathbf{y}              & = F\,\mathbf{\bar{y}_d}.                                                                      \\
-	\mathbf{y}                                                  & = \bigl(F + \alpha\,B\,F^{-1}B\bigr)^{-1}F\,\mathbf{d}. \tag{6} \label{eq:grad_y_u_d}
+	\mathbf{y}                                                  & = \bigl(F + \alpha\,B\,F^{-1}B\bigr)^{-1}F\,\mathbf{d}. \tag{6} \label{eq:grad_y_u_d} 
 \end{align*}
 Once \(\mathbf{y}\) is computed from \eqref{eq:grad_y_u_d}, the optimal control is recovered via \(\mathbf{u} = F^{-1}B\,\mathbf{y},\)
 and the Lagrange multiplier is given by \(\symbf{\lambda} = \alpha\,\mathbf{u}\).

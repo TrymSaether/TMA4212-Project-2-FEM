@@ -8,29 +8,36 @@
 \include{title}
 \clearpage
 
-\section{The 1D Poisson Problem}
+\section{Introduction and Problem Statement}
 We consider the one-dimensional Poisson equation
 \[
-	-u''(x) = f(x), \quad x \in \Omega=(0,1),
+	-u''(x) = f(x), \quad x \in \Omega = (0,1),
 \]
 with the (homogeneous) Dirichlet boundary conditions \(u(0)=u(1)=0\).
-To solve this boundary value problem (BVP) using the finite element method (FEM), we first derive its variational (or weak) form.
+Our goal is to derive the finite element method (FEM) using piecewise quadratic (\(\mathbb{P}_2\)) polynomials on a partition of the interval, implement the solver, and then confirm empirically the theoretical convergence rates of order \(\mathcal{O}(h^3)\) in the \(L^2\)-norm and \(\mathcal{O}(h^2)\) in the \(H^1\)-norm. 
+
+\subsection{Weak Formulation}
+To solve this boundary value problem (BVP) using FEM, we first derive its variational (or weak) form.
 We seek a function \(u \in H^1_0(\Omega)\) such that
+\begin{align}
+	a(u,v) &= F(v), && \forall v \in H^1_0(\Omega), \nonumber \\
+	\text{where}\quad a(u,v) &= \int_0^1 u'(x)\,v'(x)\,dx, && F(v) = \int_0^1 f(x)\,v(x)\,dx. \label{eq:weak_form}
+\end{align}
+
+Multiplying the PDE by a test function \(v\) and integrating over \((0,1)\), we integrate by parts and require \(v(0)=v(1)=0\). 
+We get at the weak formulation:
 \[
-	a(u,v) = F(v), \qquad \forall v \in H^1_0(\Omega),
+\text{Find } u \in H^1_0(0,1)\text{ such that}\quad
+\int_0^1 u'(x)\,v'(x)\,dx \;=\; \int_0^1 f(x)\,v(x)\,dx,
+\quad \forall\,v\in H^1_0(0,1).
 \]
-where the bilinear form \(a(\cdot,\cdot)\) and linear functional \(F(\cdot)\) are defined by
-\[
-	a(u,v) = \int_0^1 u'(x)\,v'(x)\,dx, \qquad F(v) = \int_0^1 f(x)\,v(x)\,dx. \label{eq:weak_form}
-\]
-This weak formulation is derived by multiplying the differential equation (PDE) by a test function \(v\), integrating (by parts) over \(\Omega\).
-The boundary conditions \(v(0)=v(1)=0\) ensure that boundary terms vanish. Then by the \emph{Lax-Milgram theorem} for every \(f \in L^2(\Omega)\), there exists a unique solution \(u \in H^1_0(\Omega)\) such that \(a(u,v)=F(v)\) for all \(v \in H^1_0(\Omega)\)\cite{lax_milgram_1954}.
 
 The Galerkin finite element method restricts this infinite-dimensional problem to a finite-dimensional subspace \(V_h \subset H^1_0(\Omega)\). We choose \(V_h\) as the space of continuous piecewise-quadratic (\(\mathbb{P}_2\)) polynomials on a partition of \(\Omega\). The discrete problem is: find \(u_h \in V_h\) such that
 \[
 	a(u_h,v_h) = F(v_h), \qquad \forall v_h \in V_h.
 \]
 This leads to a linear system for the coefficients of \(u_h\) with respect to a finite element basis.
+
 In the following sections, we describe the construction of \(V_h\) using quadratic Lagrange elements on a non-uniform mesh, derive the element matrices and the assembly process, and finally implement the solver to verify its accuracy.
 
 \subsection{Mesh and Basis Functions}
@@ -344,8 +351,9 @@ matches the exact solution.
 	\caption{$L^2$ and $H^1$-norm errors for the sine example using quadratic elements. The consistent error reduction by a factor of approximately 16 when $h$ is halved confirms fourth-order convergence in both norms. Overall convergence rates: $L^2 \approx 4.02$, $H^1 \approx 4.01$. Final error at finest resolution: $L^2 = 2.12 \times 10^{-11}$, $H^1 = 3.87 \times 10^{-11}$.}
 	\label{tab:convergence_fancy}
 \end{table}
-\subsubsection*{Simple Poisson Problem}
-We also tested the simple problem
+
+\paragraph{Simple Poisson Problem:}
+We also tested the solver on the simple Poisson problem
 \[
 	-u''(x) \;=\; 1, \quad x \in [0,1], \quad u(0)=u(1)=0,
 \]
@@ -353,18 +361,51 @@ whose exact solution is \(u(x) = \tfrac12\,x(1-x)\).
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=0.85\textwidth]{figures/fem_plot_convergence_simple_M20.png}
-	\caption{Finite element solution \(u_h(x)\) (blue dotted-solid line) vs.\
-		\(u(x)=\tfrac12\,x(1-x)\) (red solid line) with \(M=20\) quadratic elements.}
+	\includegraphics[width=0.85\textwidth]{figures/convergence_simple.png}
+	\caption{Plots of FEM solution \(u_h(x)\) vs. exact solution \(u(x)\) (top),
+		convergence plot (loglog scale with $L^2, L^\infty, H^1$ errors vs. mesh size $h$) (bottom left),
+		and error plot (bottom right).}
 	\label{fig:solution_simple}
 \end{figure}
-
-\medskip
+\begin{table}[htbp]
+	\centering
+	\begin{tabular}{|c|c|S[table-format=1.2e-2]|c|S[table-format=1.2e-2]|c|S[table-format=1.2e-2]|c|}
+		\hline
+		\rowcolor{blue!15} \textbf{M} & \textbf{h} & {\textbf{$L^2$ Error}} & \textbf{Rate} & {\textbf{$L^\infty$ Error}} & \textbf{Rate} & {\textbf{$H^1$ Error}} & \textbf{Rate} \\
+		\hline
+		4   & 2.50e-01 & 9.03e-17 & --    & 1.39e-16 & --    & 3.19e-16 & --    \\
+		\rowcolor{blue!5}
+		8   & 1.25e-01 & 3.74e-16 & -2.05 & 5.27e-16 & -1.93 & 1.35e-15 & -2.09 \\
+		16  & 6.25e-02 & 1.83e-15 & -2.29 & 2.60e-15 & -2.30 & 6.46e-15 & -2.25 \\
+		\rowcolor{blue!5}
+		32  & 3.12e-02 & 7.05e-15 & -1.94 & 9.94e-15 & -1.94 & 2.50e-14 & -1.95 \\
+		64  & 1.56e-02 & 2.83e-14 & -2.01 & 4.01e-14 & -2.01 & 1.01e-13 & -2.01 \\
+		\rowcolor{blue!5}
+		128 & 7.81e-03 & 1.06e-13 & -1.91 & 1.49e-13 & -1.90 & 3.82e-13 & -1.92 \\
+		256 & 3.91e-03 & 4.26e-13 & -2.00 & 5.99e-13 & -2.01 & 1.53e-12 & -2.00 \\
+		\hline
+		\multicolumn{8}{|c|}{\cellcolor{blue!15}\textbf{Overall convergence rates (from polyfit):}} \\
+		\multicolumn{8}{|c|}{$L^2: -2.03$ \qquad $L^\infty: -2.02$ \qquad $H^1: -2.03$} \\
+		\hline
+	\end{tabular}
+	\caption{Convergence analysis for the simple example. The errors are approximately machine epsilon, indicating the solution is exact up to roundoff error.}
+	\label{tab:convergence_simple}
+\end{table}
 
 Note that since the exact solution is quadratic means our P2 elements should represent it perfectly.
 With Simpson's rule integration, $u_h(x)$ theoretically matches $u(x)$ exactly.
-In practice, we observe slight errors on finer meshes due to floating-point roundoff in the larger linear systems.
 
+In practice, we observe slight errors on finer meshes due to floating-point roundoff in the larger linear systems.
+Since the exact solution is quadratic, our $\mathbb{P}_2$ finite element method should be exact for any mesh with $M \geq 4$ elements. 
+However, when solving the linear system on increasingly refined (uniform) meshes, we observe errors on the order of machine epsilon.
+\begin{remark}{Machine epsilon}{}
+	The \emph{machine epsilon} is the smallest number that, when added to 1.0, results in a number different from 1.0 in floating-point arithmetic.
+\end{remark}
+
+In practice, the computed solution is exact up to roundoff error. The error tends to increase slightly for finer meshes because the larger linear systems require more floating-point operations:
+\[
+	\text{Number of operations} \propto \mathcal{O}(M^3)
+\]
 \subsubsection*{Complex Example with Non-Uniform Mesh}
 We also tested the solver on a non-uniform mesh with $M=20$ elements, where the mesh points are defined by
 \[

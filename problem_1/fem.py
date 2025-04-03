@@ -334,7 +334,7 @@ def plot_stiffness_matrix_and_load_vector(solver: Poisson, name="test", savefig=
         plt.savefig(f"figures/stiffness_load_{name}_M{solver.M}.png", dpi=100)
     plt.show()
 
-def convergence_test(solver, M_list=None):
+def convergence_test(solver, M_list=None, N_list=None):
     """Run comprehensive convergence test"""
     if M_list is None:
         M_list = np.array([4, 8, 16, 32, 64, 128, 256, 512])
@@ -343,29 +343,49 @@ def convergence_test(solver, M_list=None):
     err_L2 = []
     err_inf = []
     err_H1 = []
+    rate_L2 = []
+    rate_inf = []
+    rate_H1 = []
     
-    for m in M_list:
-        Sol_ = Poisson(m, solver.f, solver.ex, solver.d_ex, solver.dd_ex)
+    if N_list is None:
+        N_list = [2 * M + 1 for M in M_list]
+    
+    # Compute errors for each mesh size
+    for m, N_fine in zip(M_list, N_list):
+        Sol_ = Poisson(m, solver.f, solver.ex, solver.d_ex, solver.dd_ex, N_fine=N_fine)
         Sol_.solve()
         err_L2.append(Sol_.error(norm="L2"))
         err_H1.append(Sol_.error(norm="H1"))
         err_inf.append(Sol_.error(norm="Linf"))
     
+    # Convert to numpy arrays
     err_L2 = np.array(err_L2)
     err_inf = np.array(err_inf)
     err_H1 = np.array(err_H1)
-
+    
+    # Compute convergence rates between consecutive mesh refinements
+    for i in range(1, len(h_list)):
+        rate_L2.append(np.log(err_L2[i-1]/err_L2[i]) / np.log(h_list[i-1]/h_list[i]))
+        rate_inf.append(np.log(err_inf[i-1]/err_inf[i]) / np.log(h_list[i-1]/h_list[i]))
+        rate_H1.append(np.log(err_H1[i-1]/err_H1[i]) / np.log(h_list[i-1]/h_list[i]))
+    
+    # Compute average rates
+    avg_rate_L2 = np.mean(rate_L2)
+    avg_rate_inf = np.mean(rate_inf)
+    avg_rate_H1 = np.mean(rate_H1)
+    
+    # Also compute overall convergence rates using polyfit for comparison
     p_L2 = np.polyfit(np.log(h_list), np.log(err_L2), 1)[0]
     p_inf = np.polyfit(np.log(h_list), np.log(err_inf), 1)[0]
     p_H1 = np.polyfit(np.log(h_list), np.log(err_H1), 1)[0]
     
-    p = [p_L2, p_inf, p_H1]
-    err = [err_L2, err_inf, err_H1]
-    return h_list, p, err
-
+    return (h_list, (p_L2, p_inf, p_H1), (err_L2, err_inf, err_H1), 
+            (rate_L2, rate_inf, rate_H1), (avg_rate_L2, avg_rate_inf, avg_rate_H1))
+    
 def print_convergence_table(solver, M_list=None):
     """Print detailed convergence analysis table"""
-    hs, (p_L2, p_inf, p_H1), (errors_L2, errors_inf, errors_H1) = convergence_test(solver, M_list)
+    hs, (p_L2, p_inf, p_H1), (errors_L2, errors_inf, errors_H1), \
+    (rates_L2, rates_inf, rates_H1), (avg_L2, avg_inf, avg_H1) = convergence_test(solver, M_list)
     
     # Table formatting
     headers = ["M", "h", "L² Error", "Rate", "L∞ Error", "Rate", "H¹ Error", "Rate"]
@@ -375,132 +395,128 @@ def print_convergence_table(solver, M_list=None):
     separator = "-+-".join(["-" * w for w in col_widths])
     title_width = sum(col_widths) + 3 * (len(col_widths) - 1)
     
-    # Print table
     print("\n" + "=" * title_width)
     print("CONVERGENCE ANALYSIS".center(title_width))
     print("=" * title_width)
     print(header_fmt.format(*headers))
     print(separator)
 
-    # Print rows
-    for i in range(len(hs)):
+    # Print first row without rates
+    M_val = int(1.0 / hs[0])
+    row = [
+        f"{M_val:d}",
+        f"{hs[0]:.2e}",
+        f"{errors_L2[0]:.2e}",
+        "--",
+        f"{errors_inf[0]:.2e}",
+        "--",
+        f"{errors_H1[0]:.2e}",
+        "--"
+    ]
+    print(row_fmt.format(*row))
+
+    # Print remaining rows with rates
+    for i in range(1, len(hs)):
         M_val = int(1.0 / hs[i])
         row = [
             f"{M_val:d}",
             f"{hs[i]:.2e}",
             f"{errors_L2[i]:.2e}",
-            f"{p_L2:.2f}",
+            f"{rates_L2[i-1]:.2f}",
             f"{errors_inf[i]:.2e}",
-            f"{p_inf:.2f}",
+            f"{rates_inf[i-1]:.2f}",
             f"{errors_H1[i]:.2e}",
-            f"{p_H1:.2f}"
+            f"{rates_H1[i-1]:.2f}"
         ]
         print(row_fmt.format(*row))
 
     print(separator)
     print("\nAverage convergence rates:")
+    print(f"L²: {avg_L2:.2f}    L∞: {avg_inf:.2f}    H¹: {avg_H1:.2f}")
+    print("\nOverall convergence rates (from polyfit):")
     print(f"L²: {p_L2:.2f}    L∞: {p_inf:.2f}    H¹: {p_H1:.2f}")
     print("=" * title_width + "\n")
 
-def plot_convergence(solver, name="test", label="test", savefig=False, M_list=None):
-    """Plot comprehensive convergence analysis with solution comparison"""
-    hs, (p_L2, p_inf, p_H1), (errors_L2, errors_inf, errors_H1) = convergence_test(solver, M_list)
-    ref_hs = hs / hs[0]
+
+def plot_convergence(solver, name="test", label="test", savefig=False, M_list=None, N_list=None):
+    """Plot convergence analysis with improved visualization
     
+    Parameters:
+        solver: Poisson solver instance
+        name: Name for saving figure
+        label: Title label for the plot
+        savefig: Whether to save figure
+        M_list: List of mesh sizes
+        N_list: List of fine mesh sizes for error computation
+    """
+    # Get convergence data
+    hs, (p_L2, p_inf, p_H1), (errors_L2, errors_inf, errors_H1), \
+    (rates_L2, rates_inf, rates_H1), _ = convergence_test(solver, M_list, N_list)
+    
+    # Create figure with 2x2 grid
     fig = plt.figure(figsize=(15, 10))
-    gs = plt.GridSpec(2, 2, height_ratios=[1, 1], width_ratios=[1.5, 1])
+    gs = plt.GridSpec(2, 2, height_ratios=[1, 1])
     
-    # Top panel: Solution vs Exact
+    # Top plot: Solution comparison
     ax_s = fig.add_subplot(gs[0, :])
-    x = np.linspace(0, 1, 200)
-    u = solver.get_exact_solution(x)
-    xh, uh = solver.get_solution()
-    
-    ax_s.plot(x, u, "r-", linewidth=2, label=label)
-    ax_s.plot(xh, uh, "-", markersize=5, label=r"$u_h$")
-    ax_s.set_title("FEM vs Exact Solution")
+    x_fine = np.linspace(0, 1, 200)
+    u_exact = solver.get_exact_solution(x_fine)
+    u_nodes = solver.get_coefficients()
+    x_nodes = solver.nodes
+
+        
+    # Plot exact and numerical solutions
+    ax_s.plot(x_fine, u_exact, "r-", linewidth=2, label="Exact")
+    ax_s.plot(x_nodes, u_nodes, "bo", markersize=5, label="FEM", alpha=0.7)
+    ax_s.set_title(f"FEM vs Exact Solution\n{label}")
     ax_s.set_xlabel("$x$")
     ax_s.set_ylabel("$u(x)$")
     ax_s.legend()
     ax_s.grid(True)
 
-    # Bottom left: Convergence plot 
+    # Bottom left: Convergence rates
     ax_c = fig.add_subplot(gs[1, 0])
-    ax_c.loglog(
-        hs,
-        errors_L2,
-        "bo-",
-        linewidth=2,
-        markersize=8,
-        label=f"$\\|e_h\\|_{{L^2}} = \\mathcal{{O}}(h^{{{p_L2:.2f}}})$",
-    )
-    ax_c.loglog(
-        hs,
-        errors_inf,
-        "go-", 
-        linewidth=2,
-        markersize=8,
-        label=f"$\\|e_h\\|_{{L^\\infty}} = \\mathcal{{O}}(h^{{{p_inf:.2f}}})$",
-    )
-    ax_c.loglog(
-        hs,
-        errors_H1,
-        "mo-",
-        linewidth=2,
-        markersize=8,
-        label=f"$\\|e_h\\|_{{H^1}} = \\mathcal{{O}}(h^{{{p_H1:.2f}}})$",
-    )
+    
+    # Plot error curves
+    ax_c.loglog(hs, errors_L2, "bo-", linewidth=2, label=f"$L^2: O(h^{{{p_L2:.2f}}})$")
+    ax_c.loglog(hs, errors_inf, "go-", linewidth=2, label=f"$L^\\infty: O(h^{{{p_inf:.2f}}})$")
+    ax_c.loglog(hs, errors_H1, "mo-", linewidth=2, label=f"$H^1: O(h^{{{p_H1:.2f}}})$")
+    
+    # Add reference lines
+    h_ref = np.array([hs[0], hs[-1]])
+    ax_c.loglog(h_ref, errors_L2[0]*(h_ref/hs[0])**3, "k--", alpha=0.5, label="$O(h^3)$")
+    ax_c.loglog(h_ref, errors_L2[0]*(h_ref/hs[0])**2, "k:", alpha=0.5, label="$O(h^2)$")
+    
+    ax_c.set_xlabel("Mesh size $h$")
+    ax_c.set_ylabel("Error $\\|e_h\\|$")
+    ax_c.grid(True, which='both', ls='-', alpha=0.6)
+    ax_c.legend(loc='lower right')
+    ax_c.set_title("Convergence Rates")
 
-    # Reference lines
-    ax_c.loglog(
-        hs,
-        errors_L2[0] * (ref_hs) ** 3,
-        "r--",
-        linewidth=2,
-        label="$\\mathcal{O}(h^3)$",
-        alpha=0.5,
-    )
-    ax_c.loglog(
-        hs,
-        errors_L2[0] * (ref_hs) ** 2,
-        "g--",
-        linewidth=2,
-        label="$\\mathcal{O}(h^2)$",
-        alpha=0.5,
-    )
-    ax_c.loglog(
-        hs,
-        errors_L2[0] * (ref_hs) ** 1,
-        "c--",
-        linewidth=2,
-        label="$\\mathcal{O}(h)$",
-        alpha=0.5,
-    )
-
-    ax_c.set_xlabel("Mesh size: $h$")
-    ax_c.set_ylabel("Error: $\\|e_h\\|$")
-    ax_c.grid(True, which="both", ls="--", alpha=0.7)
-    ax_c.legend()
-    ax_c.set_title("Convergence Plot")
-
-    # Bottom right: Error curves
+    # Bottom right: Error evolution
     ax_e = fig.add_subplot(gs[1, 1])
-    ax_e.plot(
-        hs, errors_L2, "bo-", linewidth=2, markersize=8, label="$\\|e_h\\|_{L^2}$"
-    )
-    ax_e.plot(
-        hs, errors_inf, "go-", linewidth=2, markersize=8, label="$\\|e_h\\|_{L^\\infty}$"
-    )
-    ax_e.plot(
-        hs, errors_H1, "mo-", linewidth=2, markersize=8, label="$\\|e_h\\|_{H^1}$"
-    )
-    ax_e.set_xlabel("Mesh size $h$")
+    refinements = np.arange(len(hs))
+    
+    # Plot error evolution
+    ax_e.semilogy(refinements, errors_L2, "bo-", label="$L^2$")
+    ax_e.semilogy(refinements, errors_inf, "go-", label="$L^\\infty$")
+    ax_e.semilogy(refinements, errors_H1, "mo-", label="$H^1$")
+    
+    # Add rate annotations
+    for i in range(1, len(refinements)):
+        y_pos = np.sqrt(errors_L2[i] * errors_L2[i-1])
+        ax_e.text(i-0.5, y_pos, f"{rates_L2[i-1]:.2f}", 
+                 horizontalalignment='center', color='blue', alpha=0.7)
+    
+    ax_e.set_xlabel("Refinement level")
     ax_e.set_ylabel("Error")
-    ax_e.grid(True, which="both", ls="--", alpha=0.7)
+    ax_e.grid(True)
     ax_e.legend()
-    ax_e.set_title("Errors Plot")
+    ax_e.set_title("Error Evolution with Rates")
 
     plt.tight_layout()
     if savefig:
-        plt.savefig(f"figures/convergence_{name}_M{solver.M}.png", dpi=100)
+        plt.savefig(f"figures/convergence_{name}.png", dpi=300, bbox_inches='tight')
     plt.show()
+    
+    

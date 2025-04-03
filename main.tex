@@ -364,7 +364,31 @@ whose exact solution is \(u(x) = \tfrac12\,x(1-x)\).
 Note that since the exact solution is quadratic means our P2 elements should represent it perfectly.
 With Simpson's rule integration, $u_h(x)$ theoretically matches $u(x)$ exactly.
 In practice, we observe slight errors on finer meshes due to floating-point roundoff in the larger linear systems.
+
 \subsubsection*{Complex Example with Non-Uniform Mesh}
+We also tested the solver on a non-uniform mesh with $M=20$ elements, where the mesh points are defined by
+\[
+	x_k = \frac{1}{2}\left(1-\cos\left(\frac{k\pi}{M}\right)\right), \quad k=0,\ldots,M.
+\]
+This mesh is denser near the boundaries, which can be useful for problems with boundary layers or singularities. 
+The problem we tested where
+\[
+	-u''(x) = e^{\sin(5\pi x)}\left[25\pi^2 x(1-x)\sin(5\pi x) - 25\pi^2 x(1-x)\cos^2(5\pi x) + 10\pi (x-(1-x))\cos(5\pi x) + 2\right]
+\]
+with the exact solution
+\(
+	u(x) =\sqrt{\sin(x)} + 5e^{-100x}\cos(x).
+\)
+This is a more complex problem with more oscillations in the solution.
+The results are similar to the uniform mesh case, demonstrating the flexibility of our implementation.
+\begin{figure}[H]
+	\centering
+	% \includegraphics[width=0.85\textwidth]{figures/fem_plot_convergence_nonuniform_M20.png}
+	\caption{Finite element solution \(u_h(x)\) (blue dotted-solid line) vs.\
+		\(u(x)=\sqrt{\sin(x)} + 5e^{-100x}\cos(x)\) (red solid line) with \(M=20\) quadratic elements on a non-uniform mesh.}
+	\label{fig:solution_nonuniform}
+\end{figure}
+
 
 \subsection{Theoretical Error Analysis and Convergence Rate}
 Table~\ref{tab:convergence_fancy} illustrates that our numerical results match
@@ -481,7 +505,9 @@ Aside from those spikes, $u_h$ was relatively small elsewhere, since once the st
 	\label{fig:opt_control_case3}
 \end{figure}
 
-\paragraph{Effect of $\alpha$:} Across all cases, the parameter $\alpha$ clearly governs a spectrum between control-limited regimes (large $\alpha$) and state-accuracy regimes (small $\alpha$). For $\alpha$ in the range $10^{-3}$ to $10^{-4}$ (typical values mentioned in the prompt), we found intermediate behavior: the state $y_h$ would partially follow $y_d$ but with some error, and the control $u_h$ would be nonzero but moderate. For example, in Case 1 at $\alpha=10^{-3}$ (not shown above), $y_h(x)$ reached about 80\% of the target amplitude, and $u_h$ was about 0.2 on average (instead of 1 for full control). As $\alpha$ gets smaller, the state approximation improves at the cost of higher $u_h$ norms, illustrating the classic trade-off between fidelity and control effort. Our simulations for $\alpha=10^{-6}$ are near the extreme where $y_h$ is very close to $y_d$ in all cases, and $u_h$ is correspondingly large (especially where needed to overcome boundary or discontinuity constraints). For $\alpha=10^{-2}$, conversely, $y_h$ is very far from $y_d$ (often just the zero solution) because any significant control is too costly.
+\paragraph{Effect of $\alpha$:} Across all cases, the parameter $\alpha$ clearly governs a spectrum between control-limited regimes (large $\alpha$) and state-accuracy regimes (small $\alpha$). 
+For $\alpha$ in the range $10^{-3}$ to $10^{-4}$, we found intermediate behavior: the state $y_h$ would partially follow $y_d$ but with some error, and the control $u_h$ would be nonzero but moderate. 
+For example, in Case 1 at $\alpha=10^{-3}$ (not shown above), $y_h(x)$ reached about 80\% of the target amplitude, and $u_h$ was about 0.2 on average (instead of 1 for full control). As $\alpha$ gets smaller, the state approximation improves at the cost of higher $u_h$ norms, illustrating the classic trade-off between fidelity and control effort. Our simulations for $\alpha=10^{-6}$ are near the extreme where $y_h$ is very close to $y_d$ in all cases, and $u_h$ is correspondingly large (especially where needed to overcome boundary or discontinuity constraints). For $\alpha=10^{-2}$, conversely, $y_h$ is very far from $y_d$ (often just the zero solution) because any significant control is too costly.
 
 This qualitative behavior matches expectations: when control is cheap (small $\alpha$), the optimal strategy is to aggressively drive $y$ toward the target; when control is expensive (large $\alpha$), it's better to accept error in $y$ and keep $u$ small.
 

@@ -18,6 +18,7 @@ class Poisson:
 
         self.xi_b = np.array([0.0, 0.5, 1.0])  # reference element
         self.nodes = np.linspace(0, 1, self.N) 
+        self.elements = self.nodes[::2]  # nodes of the elements
         self.uh = None
         self.xh = None
         self.A = None
@@ -158,6 +159,11 @@ class Poisson:
         if self.uh is None or self.xh is None:
             self.solve()
         return self.xh, self.uh
+
+    def get_coefficients(self):
+        if self.uh is None:
+            self.solve()
+        return self.u
 
     def get_exact_solution(self, x):
         return self.ex(x)
@@ -411,7 +417,7 @@ def plot_convergence(solver, name="test", label="test", savefig=False, M_list=No
     xh, uh = solver.get_solution()
     
     ax_s.plot(x, u, "r-", linewidth=2, label=label)
-    ax_s.plot(xh, uh, "bo-", markersize=5, label=r"$u_h$")
+    ax_s.plot(xh, uh, "-", markersize=5, label=r"$u_h$")
     ax_s.set_title("FEM vs Exact Solution")
     ax_s.set_xlabel("$x$")
     ax_s.set_ylabel("$u(x)$")

@@ -11,7 +11,7 @@
 \section{Introduction and Problem Statement}
 We consider the one-dimensional Poisson equation
 \[
-	-u''(x) = f(x), \quad x \in \Omega = (0,1),
+	-u''(x) = f(x), \quad x \in \Omega=(0,1),
 \]
 with the (homogeneous) Dirichlet boundary conditions \(u(0)=u(1)=0\).
 Our goal is to derive the finite element method (FEM) using piecewise quadratic (\(\mathbb{P}_2\)) polynomials on a partition of the interval, implement the solver, and then confirm empirically the theoretical convergence rates of order \(\mathcal{O}(h^3)\) in the \(L^2\)-norm and \(\mathcal{O}(h^2)\) in the \(H^1\)-norm. 
@@ -31,6 +31,7 @@ We get at the weak formulation:
 \int_0^1 u'(x)\,v'(x)\,dx \;=\; \int_0^1 f(x)\,v(x)\,dx,
 \quad \forall\,v\in H^1_0(0,1).
 \]
+By Lax--Milgram theory, this has a unique solution \(u\in H^1_0\) for \(f \in L^2(0,1)\).
 
 The Galerkin finite element method restricts this infinite-dimensional problem to a finite-dimensional subspace \(V_h \subset H^1_0(\Omega)\). We choose \(V_h\) as the space of continuous piecewise-quadratic (\(\mathbb{P}_2\)) polynomials on a partition of \(\Omega\). The discrete problem is: find \(u_h \in V_h\) such that
 \[
@@ -312,44 +313,44 @@ Where $M$ is the number of elements, $x$ is a mesh--array  (where $x_{2k}$ is th
 \subsection{Numerical Results}
 We tested the solver on two example problems with known exact solutions.
 
-\subsubsection*{Smooth Sine Example}
+\paragraph{Smooth Example with Oscillations:}
 Consider the Poisson equation
 \[
-	-u''(x) \;=\; \pi^2 \sin(\pi x), \quad x \in [0,1], \quad u(0)=u(1)=0.
+	-u''(x) \;=\; 9\pi^2 x(1-x)\sin(3\pi x) + 6\pi(2x-1)\cos(3\pi x) + 2\sin(3\pi x), \quad x \in [0,1],\; u(0)=u(1)=0.
 \]
-Its exact solution is \(u(x) = \sin(\pi x)\). Figure~\ref{fig:solution_sine}
+Its exact solution is \(u(x) = x(1-x)\sin(3\pi x)\). Figure~\ref{fig:solution_sine}
 shows our approximation \(u_h(x)\) with \(M=20\) uniform elements, which closely
-matches the exact solution.
+matches the exact solution despite the oscillatory nature of the function.
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=0.9\textwidth]{figures/fem_plot_convergence_sine_M20.png}
-	\caption{Finite element solution \(u_h(x)\) (blue dotted-solid line) vs.\ the exact
-		solution \(u(x)=\sin(\pi x)\) (red solid line) with \(M=20\) quadratic elements.}
-	\label{fig:solution_sine}
+	\includegraphics[width=0.9\textwidth]{figures/convergence_smooth_M20.png}
+	\caption{Plots with FEM solution \(u_h(x)\) vs. exact solution \(u(x)\), convergence plot (loglog scale with $L^2, L^\infty, H^1$ errors vs. mesh size $h$), and error plot.}
+	\label{fig:solution_smooth}
 \end{figure}
 
 \begin{table}[ht]
 	\centering
-	\begin{tabular}{|c|c|c|c|c|c|c|c|}
-		\hline
-		\rowcolor{blue!25!white} \textbf{M} & \textbf{h} & \multicolumn{3}{c|}{$L^2$ Norm} & \multicolumn{3}{c|}{$H^1$ Norm}                                   \\
-		\cline{3-8}
-		\rowcolor{blue!25!white}            &            & Error                           & Rate                            & Ratio & Error    & Rate & Ratio \\
-		\hline
-		$2$                                 & $0.500$    & 6.71e-03                        & --                              & --    & 1.08e-02 & --   & --    \\
-		\rowcolor{blue!5!white}
-		$4$                                 & $0.250$    & 3.89e-04                        & 4.11                            & 17.25 & 6.53e-04 & 4.04 & 16.49 \\
-		$8$                                 & $0.125$    & 2.39e-05                        & 4.03                            & 16.29 & 4.05e-05 & 4.01 & 16.11 \\
-		\rowcolor{blue!5!white}
-		$16$                                & $0.063$    & 1.48e-06                        & 4.01                            & 16.07 & 2.53e-06 & 4.00 & 16.03 \\
-		$32$                                & $0.031$    & 9.27e-08                        & 4.00                            & 16.02 & 1.58e-07 & 4.00 & 16.01 \\
-		\rowcolor{blue!5!white}
-		$64$                                & $0.016$    & 5.79e-09                        & 4.00                            & 16.00 & 9.87e-09 & 4.00 & 16.00 \\
-		\hline
-	\end{tabular}
-	\caption{$L^2$ and $H^1$-norm errors for the sine example using quadratic elements. The consistent error reduction by a factor of approximately 16 when $h$ is halved confirms fourth-order convergence in both norms. Overall convergence rates: $L^2 \approx 4.02$, $H^1 \approx 4.01$. Final error at finest resolution: $L^2 = 2.12 \times 10^{-11}$, $H^1 = 3.87 \times 10^{-11}$.}
-	\label{tab:convergence_fancy}
+		\begin{tabular}{|c|c|c|c|c|c|c|c|}
+			\hline
+			\rowcolor{blue!25!white} \textbf{M} & \textbf{h} & \textbf{$L^2$ Error} & \textbf{Rate} & \textbf{$L^\infty$ Error} & \textbf{Rate} & \textbf{$H^1$ Error} & \textbf{Rate} \\
+			\hline
+			4        & 2.50e-01     & 4.98e-04        & 3.02     & 1.13e-03        & 2.99     & 1.17e-02        & 2.00    \\
+			\rowcolor{blue!5!white}
+			8        & 1.25e-01     & 5.73e-05        & 3.02     & 1.46e-04        & 2.99     & 2.90e-03        & 2.00    \\
+			16       & 6.25e-02     & 7.02e-06        & 3.02     & 1.84e-05        & 2.99     & 7.23e-04        & 2.00    \\
+			\rowcolor{blue!5!white}
+			32       & 3.12e-02     & 8.73e-07        & 3.02     & 2.30e-06        & 2.99     & 1.81e-04        & 2.00    \\
+			64       & 1.56e-02     & 1.09e-07        & 3.02     & 2.88e-07        & 2.99     & 4.52e-05        & 2.00    \\
+			\rowcolor{blue!5!white}
+			128      & 7.81e-03     & 1.36e-08        & 3.02     & 3.60e-08        & 2.99     & 1.13e-05        & 2.00    \\
+			256      & 3.91e-03     & 1.70e-09        & 3.02     & 4.50e-09        & 2.99     & 2.82e-06        & 2.00    \\
+			\rowcolor{blue!5!white}
+			512      & 1.95e-03     & 2.13e-10        & 3.02     & 5.63e-10        & 2.99     & 7.05e-07        & 2.00    \\
+			\hline
+		\end{tabular}
+		\caption{Convergence rates for the oscillatory example using quadratic elements. The consistent rates of approximately 3 for $L^2$ and $L^\infty$ norms and 2 for the $H^1$ norm match theoretical expectations for $\mathbb{P}_2$ elements. The errors decrease steadily as the mesh is refined, with final errors at the finest resolution: $L^2 = 2.13\times10^{-10}$, $L^\infty = 5.63\times10^{-10}$, $H^1 = 7.05\times10^{-7}$.}
+		\label{tab:convergence_fancy}
 \end{table}
 
 \paragraph{Simple Poisson Problem:}
@@ -391,11 +392,6 @@ whose exact solution is \(u(x) = \tfrac12\,x(1-x)\).
 	\caption{Convergence analysis for the simple example. The errors are approximately machine epsilon, indicating the solution is exact up to roundoff error.}
 	\label{tab:convergence_simple}
 \end{table}
-
-Note that since the exact solution is quadratic means our P2 elements should represent it perfectly.
-With Simpson's rule integration, $u_h(x)$ theoretically matches $u(x)$ exactly.
-
-In practice, we observe slight errors on finer meshes due to floating-point roundoff in the larger linear systems.
 Since the exact solution is quadratic, our $\mathbb{P}_2$ finite element method should be exact for any mesh with $M \geq 4$ elements. 
 However, when solving the linear system on increasingly refined (uniform) meshes, we observe errors on the order of machine epsilon.
 \begin{remark}{Machine epsilon}{}
@@ -406,6 +402,7 @@ In practice, the computed solution is exact up to roundoff error. The error tend
 \[
 	\text{Number of operations} \propto \mathcal{O}(M^3)
 \]
+
 \subsubsection*{Complex Example with Non-Uniform Mesh}
 We also tested the solver on a non-uniform mesh with $M=20$ elements, where the mesh points are defined by
 \[
@@ -414,7 +411,7 @@ We also tested the solver on a non-uniform mesh with $M=20$ elements, where the 
 This mesh is denser near the boundaries, which can be useful for problems with boundary layers or singularities. 
 The problem we tested where
 \[
-	-u''(x) = e^{\sin(5\pi x)}\left[25\pi^2 x(1-x)\sin(5\pi x) - 25\pi^2 x(1-x)\cos^2(5\pi x) + 10\pi (x-(1-x))\cos(5\pi x) + 2\right]
+	-u''(x) = e^{\sin(5\pi x)}\left[25\pi^2 x(1-x)(\sin(5\pi x) - \cos^2(5\pi x)) + 10\pi (2x-1)\cos(5\pi x) + 2\right]
 \]
 with the exact solution
 \(
@@ -424,12 +421,38 @@ This is a more complex problem with more oscillations in the solution.
 The results are similar to the uniform mesh case, demonstrating the flexibility of our implementation.
 \begin{figure}[H]
 	\centering
-	% \includegraphics[width=0.85\textwidth]{figures/fem_plot_convergence_nonuniform_M20.png}
-	\caption{Finite element solution \(u_h(x)\) (blue dotted-solid line) vs.\
-		\(u(x)=\sqrt{\sin(x)} + 5e^{-100x}\cos(x)\) (red solid line) with \(M=20\) quadratic elements on a non-uniform mesh.}
-	\label{fig:solution_nonuniform}
+	\includegraphics[width=0.85\textwidth]{figures/convergence_complex_M15.png}
+	\caption{Plots of FEM solution \(u_h(x)\) vs. exact solution \(u(x)\) (top),
+		convergence plot (loglog scale with $L^2, L^\infty, H^1$ errors vs. mesh size $h$) (bottom left),
+		and error plot (bottom right).}
+	\label{fig:solution_complex}
 \end{figure}
-
+\begin{table}[H]
+	\centering
+	\begin{tabular}{|>{\columncolor{blue!5}}c|c|S[table-format=1.2e-2]|c|S[table-format=1.2e-2]|c|S[table-format=1.2e-2]|c|}
+	\hline
+	\rowcolor{blue!20} \textbf{M} & \textbf{h} & {\textbf{L² Error}} & \textbf{Rate} & {\textbf{L∞ Error}} & \textbf{Rate} & {\textbf{H¹ Error}} & \textbf{Rate} \\
+	\hline
+	10       & 1.00e-01     & 1.19e-01        & --       & 2.38e-01        & --       & 7.88e-01        & --      \\
+	\rowcolor{blue!5}
+	20       & 5.00e-02     & 1.30e-03        & 6.51     & 4.62e-03        & 5.69     & 1.42e-01        & 2.47    \\
+	40       & 2.50e-02     & 1.41e-04        & 3.20     & 5.25e-04        & 3.14     & 3.52e-02        & 2.02    \\
+	\rowcolor{blue!5}
+	80       & 1.25e-02     & 1.71e-05        & 3.04     & 6.44e-05        & 3.03     & 8.80e-03        & 2.00    \\
+	160      & 6.25e-03     & 2.12e-06        & 3.01     & 8.05e-06        & 3.00     & 2.20e-03        & 2.00    \\
+	\rowcolor{blue!5}
+	320      & 3.13e-03     & 2.65e-07        & 3.00     & 1.01e-06        & 3.00     & 5.50e-04        & 2.00    \\
+	640      & 1.56e-03     & 3.31e-08        & 3.00     & 1.26e-07        & 3.00     & 1.37e-04        & 2.00    \\
+	\rowcolor{blue!5}
+	1280     & 7.81e-04     & 4.14e-09        & 3.00     & 1.57e-08        & 3.00     & 3.43e-05        & 2.00    \\
+	\hline
+	\multicolumn{8}{|>{\columncolor{blue!15}}l|}{\textbf{Overall convergence rates (from polyfit):}} \\
+	\multicolumn{8}{|>{\columncolor{blue!15}}l|}{L²: 3.33 \qquad L∞: 3.25 \qquad H¹: 2.04} \\
+	\hline
+	\end{tabular}
+	\caption{Detailed convergence analysis showing error norms and convergence rates for different mesh sizes. The consistent rates around 3 for L² and L∞ norms and 2 for H¹ norm confirm optimal convergence of the quadratic elements.}
+	\label{tab:convergence_detailed}
+	\end{table}
 
 \subsection{Theoretical Error Analysis and Convergence Rate}
 Table~\ref{tab:convergence_fancy} illustrates that our numerical results match

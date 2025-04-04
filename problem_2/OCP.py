@@ -103,16 +103,10 @@ class FEMSolver:
         Here ȳ_d is the interpolation of y_d onto V_h.
         Returns: (x, y_h, u_h) with x the interior nodes.
         """
-        # K: stiffness matrix from Poisson (using derivatives)
         K, _, x = self.assemble_system(f_func=None, use_mass=False)
-        # M: mass matrix for L2 inner product
         M = self.mass_matrix()
-        # Desired state at interior nodes
         Yd = y_d_func(x)
         n_int = len(x)
-        # Build block system:
-        #   [   M       αK   ] [ y ] = [ M*Yd ]
-        #   [   K       -M   ] [ u ]   [   0  ]
         A_blk = lil_matrix((2 * n_int, 2 * n_int))
         rhs = np.zeros(2 * n_int)
         A_blk[:n_int, :n_int] = M
@@ -121,82 +115,50 @@ class FEMSolver:
         A_blk[n_int:, n_int:] = -M
         rhs[:n_int] = M @ Yd
         sol = spsolve(csr_matrix(A_blk), rhs)
-        return x, sol[:n_int], sol[n_int:]
+        y = sol[:n_int]
+        u = sol[n_int:]
+        return x, y, u
+
+def plot_opt_control_multi(n, alphas, yd):
+    ocp = FEMSolver(n)
     
-    @staticmethod
-    def L2_error(y_h, y_d, x):
-        """Compute the L2 error between the computed and desired states."""
-        return np.sqrt(np.mean((y_h - y_d)**2))
-
-    @staticmethod
-    def H1_error(y_h, y_d, x):
-        """Compute the H1 error between the computed and desired states."""
-        grad_y = np.gradient(y_h, x)
-        grad_y_d = np.gradient(y_d, x)
-        return np.sqrt(np.mean((y_h - y_d)**2) + np.mean((grad_y - grad_y_d)**2))
-
-def plot_opt_control_multi(alphas, n_vals, yd, fine_mesh=200, savefig=False, name='opt_control_multi', error_norm='L2'):
-    fig, axs = plt.subplots(1, 3, figsize=(14, 6), dpi=200, gridspec_kw={'width_ratios': [1, 1, 0.5]})
-    fig.suptitle('Optimal Control Problem Solutions', fontsize=16)
+    x_fine = np.linspace(0, 1, 100)
+    yd_fine = yd(x_fine)
+    
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5), dpi=200, gridspec_kw={'width_ratios': [2.5, 1]})
     fig.subplots_adjust(wspace=0.3)
-    n_fine = max(n_vals)
-    solver_fine = FEMSolver(n_fine)
-    for alpha in alphas:
-        x_int, y_int, u_int = solver_fine.solve_opt_control(alpha, yd)
-        u_full = np.zeros_like(solver_fine.nodes)
-        u_full[1:-1] = u_int
-        y_full = np.zeros_like(solver_fine.nodes)
-        y_full[1:-1] = y_int
-        axs[0].plot(solver_fine.nodes, y_full, marker='o', linestyle='-', label=f'$\\alpha = {alpha}$')
-        axs[0].plot(solver_fine.nodes, u_full, marker='o', linestyle='-', label=f'$\\alpha = {alpha}$')
-
-    x_fine = np.linspace(0, 1, fine_mesh)
-    axs[0].plot(x_fine, yd(x_fine), 'k-', linewidth=2, label='Desired $y_d$')
-    axs[0].set_title('Optimal Control Solutions')
-    axs[0].set_xlabel('$x$')
-    axs[0].set_ylabel('State $y(x)$')
-    axs[0].legend(loc='lower center')
-    axs[0].grid(True)
     
-    # --- Right Panel: Control solutions ---
-    for alpha in alphas:
-        x_int, y_int, u_int = solver_fine.solve_opt_control(alpha, yd)
-        axs[1].plot(x_int, u_int,'-o', label=f'$\\alpha = {alpha}$')
+    # Use standard matplotlib colors (C0, C1, C3, etc.)
+    colors = ['C0', 'C1', 'C3', 'C2', 'C4']  # Add more if needed
+    
+    axs[0].plot(x_fine, yd_fine, 'k--', linewidth=1.5, label='Desired $y_d$')
+    
+    for i, alpha in enumerate(alphas):
+        color_idx = i % len(colors)
+        x_int, y_int, u_int = ocp.solve_opt_control(alpha, yd)
+        x_full = np.linspace(0, 1, len(ocp.nodes))
+        y_full = np.zeros_like(ocp.nodes)
+        y_full[1:-1] = y_int
+        axs[0].plot(x_full, y_full, f"{colors[color_idx]}-", label=f'$\\alpha = 10^{{{int(np.log10(alpha))}}}$')
+    
+    axs[0].set_title(f'State Solutions')
+    axs[0].set_xlabel('$x$')
+    axs[0].set_ylabel('$y(x)$')
+    axs[0].legend(loc='best')
+    axs[0].grid(True, linestyle='--', alpha=0.7)
+    
+    for i, alpha in enumerate(alphas):
+        color_idx = i % len(colors)
+        x_int, y_int, u_int = ocp.solve_opt_control(alpha, yd)
+        axs[1].plot(x_int, u_int, f"{colors[color_idx]}o-", markersize=2, label=f'$\\alpha = 10^{{{int(np.log10(alpha))}}}$')
     axs[1].set_title('Control Solutions')
     axs[1].set_xlabel('$x$')
-    axs[1].set_ylabel('Control $u(x)$')
-    axs[1].legend(loc='lower center')
-    axs[1].grid(True)
-    
-
-    # --- Right Panel: Convergence plot (L2 error vs. mesh size) for each α ---
-    for alpha in alphas:
-        errors = []
-        hs = []
-        for n in n_vals:
-            solver_temp = FEMSolver(n)
-            x_int, y_int, u_int = solver_temp.solve_opt_control(alpha, yd)
-            if error_norm == 'H1':
-                error = solver_temp.H1_error(y_int, yd(x_int), x_int)
-            else:
-                error = solver_temp.L2_error(y_int, yd(x_int), x_int)
-            errors.append(error)
-            hs.append(1.0 / n) 
-        hs = np.array(hs)
-        errors = np.array(errors)
-        p = np.polyfit(np.log(hs), np.log(errors), 1)
-        axs[2].loglog(hs, errors, 'o-', label=f'$\\alpha = {alpha}, \\quad \\mathcal{{O}}(h^{{{p[0]:.2f}}})$')
-        
-    axs[2].set_xlabel('Mesh size $h$')
-    axs[2].set_ylabel(f'$\\|e \\|_{{{error_norm}}}$')
-    axs[2].set_title('Convergence Plot')
-    axs[2].grid(True, which='both', linestyle='--', alpha=0.7)
-    axs[2].legend(loc='lower left')
-    
+    axs[1].set_ylabel('$u(x)$')
+    axs[1].legend(loc='best')
+    axs[1].grid(True, linestyle='--', alpha=0.7)
     plt.tight_layout()
-    if savefig:
-        plt.savefig(f'figures/opt_control_plot_{name}.png', dpi=200, bbox_inches='tight')
-    plt.show()
+    
+    return fig
 
 def print_convergence(solver, yd, alphas, n_vals):
     """

@@ -307,12 +307,13 @@ def plot(f, u_ex, d_ex, dd_ex, name="test", savefig=False, M_list=None):
 
 def plot_stiffness_matrix_and_load_vector(solver: Poisson, name="test", savefig=False):
     """Plot stiffness matrix and load vector"""
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5), dpi=100)
+    fig, ax = plt.subplots(2, 1, figsize=(6, 10), dpi=100)
+    # Get stiffness matrix and load vector
     A = solver.get_stiffness_matrix()
     b = solver.get_load_vector()
 
     # Plot stiffness matrix
-    ims = ax[0].imshow(A, cmap="inferno")
+    ims = ax[0].imshow(A, cmap="hot", interpolation="nearest")
     ax[0].set_title("Stiffness Matrix: $\\mathbf{A}$")
     ax[0].set_xlabel("Node Index $j$")
     ax[0].set_ylabel("Node Index $i$")
@@ -329,11 +330,30 @@ def plot_stiffness_matrix_and_load_vector(solver: Poisson, name="test", savefig=
     ax[1].set_title("Load Vector $\\mathbf{b}$")
     ax[1].set_xlabel("Node Index $i = \\theta(k, j)$")
     ax[1].set_ylabel("Value")
+    ax[1].set_xticks(nodes)
+    ax[1].set_xticklabels(nodes, rotation=45)
+    ax[1].grid(True, linestyle="--", alpha=0.7)
     plt.tight_layout()
-    if savefig:
-        plt.savefig(f"figures/stiffness_load_{name}_M{solver.M}.png", dpi=100)
-    plt.show()
+    return fig
 
+def plot_stiffness_matrix(solver: Poisson, name="test", savefig=False):
+    """Plot stiffness matrix"""
+    fig, ax = plt.subplots(figsize=(6, 5), dpi=100)
+    A = solver.get_stiffness_matrix()
+    # 
+    ims = ax.imshow(A, cmap="hot", interpolation="nearest")
+    ax.set_title("Stiffness Matrix: $\\mathbf{A}$")
+    ax.set_xlabel("Node Index $j$")
+    ax.set_ylabel("Node Index $i$")
+    cb = plt.colorbar(ims, ax=ax, orientation="vertical", pad=0.02)
+    cb.set_label("Value")
+    ticks = np.linspace(np.min(A), np.max(A), 5)
+    cb.set_ticks(ticks)
+    cb.set_ticklabels([f"{tick:.2f}" for tick in ticks])
+    
+    plt.tight_layout()
+    plt.show()
+    return fig
 def convergence_test(solver, M_list=None, N_list=None):
     """Run comprehensive convergence test"""
     if M_list is None:
@@ -453,70 +473,45 @@ def plot_convergence(solver, name="test", label="test", savefig=False, M_list=No
     hs, (p_L2, p_inf, p_H1), (errors_L2, errors_inf, errors_H1), \
     (rates_L2, rates_inf, rates_H1), _ = convergence_test(solver, M_list, N_list)
     
-    # Create figure with 2x2 grid
-    fig = plt.figure(figsize=(15, 10))
-    gs = plt.GridSpec(2, 2, height_ratios=[1, 1])
+    # Plot solution and convergence
+    fig, (ax_s, ax_c) = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={"width_ratios": [2, 1]}, dpi=100)
     
-    # Top plot: Solution comparison
-    ax_s = fig.add_subplot(gs[0, :])
-    x_fine = np.linspace(0, 1, 200)
+    # Get the solution for visualization
+    x_fine = np.linspace(0, 1, 500)
+    _, u_fine = solver.solve()
     u_exact = solver.get_exact_solution(x_fine)
     u_nodes = solver.get_coefficients()
     x_nodes = solver.nodes
-
-        
-    # Plot exact and numerical solutions
-    ax_s.plot(x_fine, u_exact, "r-", linewidth=2, label="Exact")
-    ax_s.plot(x_nodes, u_nodes, "bo", markersize=5, label="FEM", alpha=0.7)
-    ax_s.set_title(f"FEM vs Exact Solution\n{label}")
+    
+    # Solution plot with improved colors
+    ax_s.plot(solver.xh, solver.uh, "b-", label="Numerical: $u_h$")
+    ax_s.plot(x_nodes, u_nodes, "ro", markersize=3, label="Interior: $U_j$")
+    ax_s.plot(x_fine, u_exact, "k--", label="Exact: $u(x)$")
+    ax_s.set_title(f"Solution with {solver.M} elements")
     ax_s.set_xlabel("$x$")
     ax_s.set_ylabel("$u(x)$")
     ax_s.legend()
     ax_s.grid(True)
 
-    # Bottom left: Convergence rates
-    ax_c = fig.add_subplot(gs[1, 0])
-    
-    # Plot error curves
-    ax_c.loglog(hs, errors_L2, "bo-", linewidth=2, label=f"$L^2: O(h^{{{p_L2:.2f}}})$")
-    ax_c.loglog(hs, errors_inf, "go-", linewidth=2, label=f"$L^\\infty: O(h^{{{p_inf:.2f}}})$")
-    ax_c.loglog(hs, errors_H1, "mo-", linewidth=2, label=f"$H^1: O(h^{{{p_H1:.2f}}})$")
-    
-    # Add reference lines
-    h_ref = np.array([hs[0], hs[-1]])
-    ax_c.loglog(h_ref, errors_L2[0]*(h_ref/hs[0])**3, "k--", alpha=0.5, label="$O(h^3)$")
-    ax_c.loglog(h_ref, errors_L2[0]*(h_ref/hs[0])**2, "k:", alpha=0.5, label="$O(h^2)$")
-    
-    ax_c.set_xlabel("Mesh size $h$")
-    ax_c.set_ylabel("Error $\\|e_h\\|$")
-    ax_c.grid(True, which='both', ls='-', alpha=0.6)
-    ax_c.legend(loc='lower right')
-    ax_c.set_title("Convergence Rates")
+    # Convergence plot for all norms with better color scheme
+    ax_c.loglog(hs, errors_L2, "C0o-", linewidth=1.5, label=f"$L^2$ Error ($O(h^{{{p_L2:.2f}}})$)")
+    ax_c.loglog(hs, errors_H1, "C3s-", linewidth=1.5, label=f"$H^1$ Error ($O(h^{{{p_H1:.2f}}})$)")
+    ax_c.loglog(hs, errors_inf, "C1^--", linewidth=1.5, label=f"$L^\\infty$ Error ($O(h^{{{p_inf:.2f}}})$)")
 
-    # Bottom right: Error evolution
-    ax_e = fig.add_subplot(gs[1, 1])
-    refinements = np.arange(len(hs))
-    
-    # Plot error evolution
-    ax_e.semilogy(refinements, errors_L2, "bo-", label="$L^2$")
-    ax_e.semilogy(refinements, errors_inf, "go-", label="$L^\\infty$")
-    ax_e.semilogy(refinements, errors_H1, "mo-", label="$H^1$")
-    
-    # Add rate annotations
-    for i in range(1, len(refinements)):
-        y_pos = np.sqrt(errors_L2[i] * errors_L2[i-1])
-        ax_e.text(i-0.5, y_pos, f"{rates_L2[i-1]:.2f}", 
-                 horizontalalignment='center', color='blue', alpha=0.7)
-    
-    ax_e.set_xlabel("Refinement level")
-    ax_e.set_ylabel("Error")
-    ax_e.grid(True)
-    ax_e.legend()
-    ax_e.set_title("Error Evolution with Rates")
+    # Add reference lines for common convergence rates
+    max_rate = max(p_L2, p_H1, p_inf)
+    if max_rate > 2.5:  # If we're seeing higher-order convergence
+        ax_c.loglog(hs, 0.1 * np.array(hs) ** 3, "k:", label="$O(h^3)$")
+    else:
+        ax_c.loglog(hs, 0.1 * np.array(hs) ** 2, "k:", label="$O(h^2)$")
+        ax_c.loglog(hs, 0.5 * np.array(hs), "k:", label="$O(h)$")
+
+    ax_c.set_title(f"Convergence Rates: {label}")
+    ax_c.set_xlabel("Mesh size ($h$)")
+    ax_c.set_ylabel("Error")
+    ax_c.legend()
+    ax_c.grid(True, which="both", linestyle="--", linewidth=0.5)
 
     plt.tight_layout()
-    if savefig:
-        plt.savefig(f"figures/convergence_{name}.png", dpi=300, bbox_inches='tight')
-    plt.show()
     
-    
+    return fig
